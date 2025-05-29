@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+    <script defer src="https://overlays.rtirl.com/indicator.js"></script>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          overflow: hidden !important;
+          background-color: rgba(0, 0, 0, 0) !important;
+      }
+
+      .map-circle-wrapper {
+          width: 350px !important;
+          height: 350px !important;
+          border-radius: 50% !important;
+          overflow: hidden !important;
+          border: 6px solid #4285F4 !important;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+          background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+
+      #wrapper {
+          width: 100% !important;
+          height: 100% !important;
+          position: relative !important;
+      }
+
+      #map {
+          width: 100% !important;
+          height: 100% !important;
+          position: relative !important;
+      }
+
+      #marker {
+          background-color: cyan !important;
+          height: 12px !important;
+          width: 12px !important;
+          position: absolute !important;
+          border-radius: 50% !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-6px, -6px) !important;
+          box-shadow: 0 0 10px cyan !important;
+          z-index: 10 !important;
+      }
+
+      .gm-style-cc, .gmnoprint {
+          display: none !important;
+      }
+      .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right {
+          display: none !important;
+      }
+    </style>
+
+  </head>
+  <body>
+    <div class="map-circle-wrapper">
+      <div id="wrapper" style="position: relative; width: 100%; height: 100%;">
+        <div id="map" style="width: 100%; height: 100%"></div>
+        <div
+          id="marker"
+          style="
+            background-color: cyan;
+            height: 12px;
+            width: 12px;
+            position: absolute;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-6px, -6px);
+            box-shadow: 0 0 10px cyan;
+          "
+        ></div>
+      </div>
+    </div>
+
+    <script>
+      var params = new URLSearchParams(window.location.search);
+      if(params.get("fullscreen")) {
+        document.documentElement.setAttribute('style', 'margin: 0; padding: 0; width: 100%; height: 100%;');
+        document.body.setAttribute('style', 'margin: 0; padding: 0; width: 100%; height: 100%;');
+        document.getElementById('wrapper').setAttribute('style', 'height: 100%; width: 100%; position: relative;');
+      }
+      var zoom = params.get("zoom");
+      var script = document.createElement("script");
+      script.src =
+        "https://maps.googleapis.com/maps/api/js?key=" +
+        params.get("api_key") +
+        "&v=beta&callback=initMap"; // Added &v=beta for 3D features
+      var styles = params.get("style");
+      script.async = true;
+      var map;
+      window.initMap = function () {
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: -34.397, lng: 150.644 },
+          zoom: zoom ? Number(zoom) : 17, // Increased default zoom for 3D visibility
+          disableDefaultUI: true,
+          styles: styles ? JSON.parse(atob(decodeURIComponent(styles))) : [],
+          // --- ADDED FOR 3D BUILDINGS ---
+          mode: '3d', // Enables 3D rendering
+          tilt: 45,   // Sets the camera tilt for a 3D perspective
+          heading: 0  // Sets the map rotation
+          // ------------------------------
+        });
+      };
+      document.head.appendChild(script);
+
+      const pullKey = new URLSearchParams(window.location.search).get("key");
+      RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
+        map.panTo({
+          lng: location.longitude,
+          lat: location.latitude,
+        });
+      });
+    </script>
+  </body>
+</html>
