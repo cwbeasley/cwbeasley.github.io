@@ -77,7 +77,7 @@
 
       // --- 5-SECOND REFRESH LOGIC ---
       let lastGeocodeTime = 0;
-      const geocodeInterval = 5000; // 5000 milliseconds = 5 seconds
+      const geocodeInterval = 1500; // 5000 milliseconds = 5 seconds
 
       // This function will be called every time a new location update is received
       RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
