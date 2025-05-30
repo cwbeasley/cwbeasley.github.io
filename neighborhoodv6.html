@@ -2,162 +2,192 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display - Direct String V2</title>
+    <title>Neighborhood Display - Syntax Test Final</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
-    <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+    <script src="https://overlays.rtirl.com/indicator.js"></script> <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
     <style>
       body {
-        background-color: rgba(0, 0, 0, 0); margin: 0; padding: 0; width: 100%;
-        height: 100%; overflow: hidden;
+        background-color: rgba(0, 0, 0, 0);
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
       }
       #text {
-        color: rgba(223, 251, 38, 1); font-size: 46px; font-family: 'Open Sans', sans-serif;
-        font-weight: normal; font-style: normal; transform: rotate(0deg);
-        background-color: rgba(0, 0, 0, 0); border-color: rgba(223, 251, 38, 1);
-        border-width: 0px; border-style: solid; text-align: center;
-        border-radius: 0% 0% 0% 0%; padding: 10px; box-sizing: border-box;
-        -webkit-text-stroke-width: 0px; -webkit-text-stroke-color: rgba(255, 255, 255, 1);
-        text-shadow: 0px 0px 4px rgba(0, 0, 0, 1); width: 100%;
-        display: flex; align-items: center; justify-content: center; height: 100%;
+        color: rgba(223, 251, 38, 1);
+        font-size: 46px;
+        font-family: 'Open Sans', sans-serif;
+        font-weight: normal;
+        font-style: normal;
+        transform: rotate(0deg);
+        background-color: rgba(0, 0, 0, 0);
+        border-color: rgba(223, 251, 38, 1);
+        border-width: 0px;
+        border-style: solid;
+        text-align: center;
+        border-radius: 0% 0% 0% 0%;
+        padding: 10px; 
+        box-sizing: border-box; 
+        -webkit-text-stroke-width: 0px;
+        -webkit-text-stroke-color: rgba(255, 255, 255, 1);
+        text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%; 
       }
     </style>
   </head>
   <body>
     <div id="text">Loading location...</div>
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // wrappedEval function is removed.
-
+      // SCRIPT START (Line 44 if counting from <!DOCTYPE html> as line 1)
+      document.addEventListener('DOMContentLoaded', function() { // HTML Line 45
         const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(window.location.search); 
         const pullKey = urlParams.get("key"); 
-        
         const specificLang = "en";
-        // Removed secondary_address from types requested from API
-        const featureTypesForAPI = ["address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
-        const featureTypesForAPIString = featureTypesForAPI.join(',');
         
-        // Feature types we want to populate in our context object for the display string
-        const featureParamsToExtract = ["address", "neighborhood", "locality", "place"]; 
+        const featureTypesForAPI = ["address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"]; // HTML Line 52
+        const featureTypesForAPIString = featureTypesForAPI.join(','); // HTML Line 53
+        
+        const featureParamsToExtract = ["address", "neighborhood", "locality", "place"]; // HTML Line 56
                                       
-        let lastGeocodeTime = 0;
+        let lastGeocodeTime = 0; // HTML Line 59
         const geocodeInterval = 1500; 
         const textElement = document.getElementById("text");
-        let lastDisplayedText = "Loading location..."; // Initialize to match HTML
+        let lastDisplayedText = "Loading location...";
 
-        if (textElement) { // Ensure textElement exists before using it
-            if (!pullKey) {
-                textElement.innerText = "Error: Key missing from URL.";
-                console.error("Pull key is missing from URL parameters. Please append ?key=YOUR_KEY to the URL.");
-            } else {
-                console.log("Script loaded. Using pull key from URL:", pullKey);
-                if (typeof RealtimeIRL !== 'undefined') {
-                    RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-                        // console.log("--- Location listener fired --- Location object (raw):", JSON.stringify(location)); 
-                        const currentTime = new Date().getTime();
-                        if (currentTime - lastGeocodeTime > geocodeInterval) {
-                            lastGeocodeTime = currentTime; 
-                            const lon = location.longitude;
-                            const lat = location.latitude;
+        console.log("DOMContent Loaded. Pull key from URL:", pullKey); // HTML Line 65
 
-                            if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
-                                console.error("Invalid location data received from RealtimeIRL:", location); 
-                                if (textElement.innerText !== "Invalid GPS Data") {
-                                    textElement.innerText = "Invalid GPS Data";
-                                    lastDisplayedText = "Invalid GPS Data";
-                                }
-                                return;
-                            }
+        if (!pullKey) { 
+          if (textElement) textElement.innerText = "Error: 'key' parameter missing from URL.";
+          console.error("Pull key is missing from URL parameters. Please append ?key=YOUR_KEY to the URL.");
+        } else {
+          console.log("Script using pull key:", pullKey);
+          if (typeof RealtimeIRL !== 'undefined') {
+            RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
+              // console.log("Location listener fired. Location:", JSON.stringify(location));
+              const currentTime = new Date().getTime(); // HTML Line 77
+              if (currentTime - lastGeocodeTime > geocodeInterval) {
+                lastGeocodeTime = currentTime; 
+                const lon = location.longitude;
+                const lat = location.latitude;
 
-                            const apiUrl = \`https://api.mapbox.com/search/geocode/v6/reverse?longitude=\${lon}&latitude=\${lat}&types=\${featureTypesForAPIString}&language=\${specificLang}&access_token=\${MAPBOX_ACCESS_TOKEN}\`;
-                            // console.log("Requesting Mapbox URL:", apiUrl);
-                            
-                            fetch(apiUrl)
-                                .then(async response => { 
-                                    const responseText = await response.text(); 
-                                    // console.log("Mapbox API - Status:", response.status, "Raw Response Text:", responseText); 
-                                    if (!response.ok) {
-                                        console.error("Mapbox API HTTP Error - Status:", response.status, "Response Text (snippet):", responseText.substring(0,500));
-                                        let errorMsg = \`HTTP error \${response.status}: \`;
-                                        try { 
-                                            const errorData = JSON.parse(responseText); 
-                                            errorMsg += (errorData.message || responseText.substring(0,100)); 
-                                        } catch (e) { 
-                                            errorMsg += responseText.substring(0,100); 
-                                        }
-                                        throw new Error(errorMsg); 
-                                    }
-                                    try { 
-                                        const jsonData = JSON.parse(responseText); 
-                                        return jsonData; 
-                                    } catch (e) {
-                                        console.error("Mapbox API Response (2xx) - FAILED TO PARSE JSON. Error:", e.message, "Raw Text (snippet):", responseText.substring(0,500)); 
-                                        throw new Error("Mapbox response was not valid JSON despite 2xx status.");
-                                    }
-                                })
-                                .then(dataFromMapbox => { 
-                                    var context = {};
-                                    if (dataFromMapbox && dataFromMapbox.features) {
-                                        for (const param of featureParamsToExtract) {
-                                            const foundFeature = dataFromMapbox.features.find(
-                                                (feature) => feature.properties && feature.properties.feature_type === param
-                                            );
-                                            if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
-                                                context[param] = { text: foundFeature.properties.name };
-                                            }
-                                        }
-                                        if (dataFromMapbox.features.length > 0 && dataFromMapbox.features[0].properties && dataFromMapbox.features[0].properties.context) {
-                                            const mainFeatureContext = dataFromMapbox.features[0].properties.context;
-                                            for (const param of featureParamsToExtract) {
-                                                if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
-                                                    context[param] = { text: mainFeatureContext[param].name };
-                                                }
-                                            }
-                                        }
-                                    }
-                                    // console.log("Populated Context for formatting:", JSON.stringify(context, null, 2)); 
-                                    
-                                    let resultParts = [];
-                                    if (context.address && context.address.text) { resultParts.push(context.address.text); }
-                                    if (context.neighborhood && context.neighborhood.text) { resultParts.push(context.neighborhood.text); }
-                                    if (context.locality && context.locality.text) { resultParts.push(context.locality.text); }
-                                    if (context.place && context.place.text) { resultParts.push(context.place.text); }
-                                    
-                                    let result = resultParts.join(', ');
-                                    // console.log("Constructed Result String:", result); 
-
-                                    let cleanedResult = String(result).trim(); 
-                                    cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
-                                    cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
-                                    // console.log("Cleaned Result:", cleanedResult); 
-
-                                    let displayText = "Location details not found";
-                                    if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
-                                      displayText = cleanedResult;
-                                    }
-                                    
-                                    if (textElement.innerText !== displayText) {
-                                        textElement.innerText = displayText;
-                                        lastDisplayedText = displayText;
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error("Geocoding Pipeline Error:", error.message); 
-                                    if (textElement.innerText !== "Geocoding Error") {
-                                        textElement.innerText = "Geocoding Error";
-                                        lastDisplayedText = "Geocoding Error";
-                                    }
-                                });
-                        } 
-                    }); 
-                } else { 
-                    console.error("CRITICAL ERROR: RealtimeIRL object is not defined. The RealtimeIRL API script likely failed to load or was blocked."); 
-                    if (textElement) textElement.innerText = "Error: RealtimeIRL library not loaded.";
+                if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                    console.error("Invalid location data from RealtimeIRL:", location); 
+                    if (textElement && textElement.innerText !== "Invalid GPS Data") {
+                         textElement.innerText = "Invalid GPS Data";
+                         lastDisplayedText = "Invalid GPS Data";
+                    }
+                    return;
                 }
-            } // End of pullKey check
-        } // End of textElement check (added)
+
+                // Explicit step-by-step URL construction
+                let apiUrl = "https://api.mapbox.com/search/geocode/v6/reverse"; // HTML Line 90
+                apiUrl = apiUrl + "?longitude=" + encodeURIComponent(lon);         // HTML Line 91
+                apiUrl = apiUrl + "&latitude=" + encodeURIComponent(lat);          // HTML Line 92
+                apiUrl = apiUrl + "&types=" + encodeURIComponent(featureTypesForAPIString); // HTML Line 93
+                apiUrl = apiUrl + "&language=" + encodeURIComponent(specificLang);      // HTML Line 94
+                apiUrl = apiUrl + "&access_token=" + encodeURIComponent(MAPBOX_ACCESS_TOKEN); // HTML Line 95
+                
+                // console.log("Requesting Mapbox URL:", apiUrl);
+                
+                fetch(apiUrl)
+                    .then(response => { 
+                        const responseOk = response.ok;
+                        const responseStatus = response.status;
+                        return response.text().then(responseText => {
+                            return { ok: responseOk, status: responseStatus, text: responseText };
+                        });
+                    })
+                    .then(({ ok, status, text }) => { 
+                        // console.log("Mapbox API - Status:", status, "Raw Response Text (snippet):", text.substring(0, 200)); 
+
+                        if (!ok) {
+                            console.error("Mapbox API HTTP Error - Status:", status, "Response Text (snippet):", text.substring(0,500));
+                            let errorMsg = "HTTP error " + status + ": "; 
+                            try { 
+                                const errorData = JSON.parse(text); 
+                                errorMsg += (errorData.message || text.substring(0,100)); 
+                            } catch (e) { 
+                                errorMsg += text.substring(0,100); 
+                            }
+                            throw new Error(errorMsg); 
+                        }
+                        try { 
+                            const jsonData = JSON.parse(text); 
+                            return jsonData; 
+                        } catch (e) {
+                            console.error("Mapbox API Response (2xx) - FAILED TO PARSE JSON. Error:", e.message, "Raw Text (snippet):", text.substring(0,500)); 
+                            throw new Error("Received 2xx status, but response text was not valid JSON. Preview: " + text.substring(0,200));
+                        }
+                    })
+                    .then(dataFromMapbox => { 
+                        // console.log("Data successfully parsed, processing context..."); 
+                        var context = {};
+                        if (dataFromMapbox && dataFromMapbox.features) {
+                            for (const param of featureParamsToExtract) {
+                                const foundFeature = dataFromMapbox.features.find(
+                                    (feature) => feature.properties && feature.properties.feature_type === param
+                                );
+                                if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
+                                    context[param] = { text: foundFeature.properties.name };
+                                }
+                            }
+                            if (dataFromMapbox.features.length > 0 && dataFromMapbox.features[0].properties && dataFromMapbox.features[0].properties.context) {
+                                const mainFeatureContext = dataFromMapbox.features[0].properties.context;
+                                for (const param of featureParamsToExtract) {
+                                    if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
+                                        context[param] = { text: mainFeatureContext[param].name };
+                                    }
+                                }
+                            }
+                        }
+                        // console.log("Populated Context for formatting:", JSON.stringify(context, null, 2)); 
+                        
+                        let resultParts = [];
+                        if (context.address && context.address.text) { resultParts.push(context.address.text); }
+                        if (context.neighborhood && context.neighborhood.text) { resultParts.push(context.neighborhood.text); }
+                        if (context.locality && context.locality.text) { resultParts.push(context.locality.text); }
+                        if (context.place && context.place.text) { resultParts.push(context.place.text); }
+                        
+                        let result = resultParts.join(', ');
+                        // console.log("Constructed Result String:", result); 
+
+                        let cleanedResult = String(result).trim(); 
+                        cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
+                        cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
+                        // console.log("Cleaned Result:", cleanedResult); 
+
+                        let displayText = "Location details not found";
+                        if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
+                          displayText = cleanedResult;
+                        }
+                        
+                        if (textElement.innerText !== displayText) {
+                            textElement.innerText = displayText;
+                            lastDisplayedText = displayText;
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Geocoding Pipeline Error:", error.message); 
+                        if (textElement && textElement.innerText !== "Geocoding Error") { 
+                            textElement.innerText = "Geocoding Error";
+                            lastDisplayedText = "Geocoding Error";
+                        }
+                    });
+              } 
+            }); 
+          } else { 
+            console.error("CRITICAL ERROR: RealtimeIRL object is not defined."); 
+            if (textElement) textElement.innerText = "Error: RealtimeIRL library not loaded.";
+          }
+        } 
       }); 
+      // SCRIPT END (Line 173)
     </script>
   </body>
 </html>
