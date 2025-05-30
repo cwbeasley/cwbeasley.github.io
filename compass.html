@@ -82,6 +82,7 @@
                 const cardinalDirection = activeCompassDirections[cardinalIndex];
                 const numericalDegree = Math.floor(numericHeading);
 
+                // Added more space between cardinalDirection and numericalDegree (e.g., three spaces)
                 const newText = `${cardinalDirection}   ${numericalDegree}\u00B0`;
 
                 // Only update the DOM if the text has actually changed
