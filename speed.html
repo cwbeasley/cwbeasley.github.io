@@ -35,14 +35,17 @@
     </style>
 </head>
 <body>
-    <div id="speed_text">0</div> <script>
+    <div id="speed_text">Not In Motion</div> 
+
+    <script>
         const speedTextElement = document.getElementById("speed_text");
         const urlParams = new URLSearchParams(window.location.search);
         const pullKey = urlParams.get("key");
 
         const MPS_TO_MPH = 2.23694; // Conversion factor from meters/second to MPH
-        let previousLocationData = null; // To store {lat, lon, time} of the last point
-        let lastDisplayedCalculatedSpeed = 0; // Initialize to 0, as initial display is 0
+        let previousLocationData = null; 
+        // Initialize lastDisplayedText to match the initial HTML state
+        let lastDisplayedText = "Not In Motion"; 
 
         // Function to calculate distance between two lat/lon points using Haversine formula
         function calculateHaversineDistance(coords1, coords2) { // coords = {lat, lon}
@@ -64,11 +67,14 @@
         }
 
         if (!pullKey) {
-            speedTextElement.innerText = "ERR"; 
+            const errorMsg = "ERR"; 
+            if (speedTextElement.innerText !== errorMsg) {
+                speedTextElement.innerText = errorMsg;
+                lastDisplayedText = errorMsg; 
+            }
             console.error("RealtimeIRL pullKey is missing from URL parameters.");
         } else {
             RealtimeIRL.forPullKey(pullKey).addLocationListener(function(currentLocation) {
-                // Ensure current location has latitude, longitude, and a timestamp
                 if (typeof currentLocation.latitude !== 'number' || 
                     typeof currentLocation.longitude !== 'number') {
                     console.warn("Received location update without valid lat/lon.", currentLocation);
@@ -78,8 +84,7 @@
                 const currentPos = {
                     lat: currentLocation.latitude,
                     lon: currentLocation.longitude,
-                    // Use device timestamp if available and seems valid, otherwise current browser time
-                    time: (currentLocation.timestamp && currentLocation.timestamp > 1000000000000) ? // Basic sanity check for ms timestamp
+                    time: (currentLocation.timestamp && currentLocation.timestamp > 1000000000000) ? 
                           currentLocation.timestamp : Date.now() 
                 };
 
@@ -90,28 +95,31 @@
                     );
 
                     const timeDiffSeconds = (currentPos.time - previousLocationData.time) / 1000;
+                    let calculated_speed_value = 0; 
 
-                    let calculated_speed_mph = 0; // Default to 0 if no movement or time diff
-
-                    if (timeDiffSeconds > 0.05) { // Only calculate if time difference is somewhat significant
+                    if (timeDiffSeconds > 0.05) { 
                         const speed_mps = distanceMeters / timeDiffSeconds;
-                        calculated_speed_mph = Math.round(speed_mps * MPS_TO_MPH); // Rounded to whole number
-                    } else if (distanceMeters === 0) {
-                        calculated_speed_mph = 0; // No distance moved
+                        calculated_speed_value = Math.round(speed_mps * MPS_TO_MPH);
+                    } else if (distanceMeters < 0.1 && timeDiffSeconds >= 0) { 
+                        // If distance is negligible (e.g. <10cm to account for GPS jitter) and time passed (or is 0)
+                        // consider it as 0 speed.
+                        calculated_speed_value = 0;
+                    }
+                    // If timeDiffSeconds is very small (<=0.05) and distance is not negligible,
+                    // calculated_speed_value remains 0 from initialization to avoid potentially huge/noisy speed values.
+
+                    let newDisplayText;
+                    if (calculated_speed_value === 0) {
+                        newDisplayText = "Not In Motion";
                     } else {
-                        // Time difference too small, or negative. Maintain last speed or set to 0 if very noisy.
-                        // For simplicity, if time diff is tiny, we can assume speed is effectively the last known or 0 if last was also based on tiny diff.
-                        // We can also just display the last valid calculated speed if it's not 0, or default to 0.
-                        // Sticking to calculated_speed_mph = 0 (from initialization) if timeDiffSeconds is too small.
+                        newDisplayText = `${calculated_speed_value} MPH`;
                     }
                     
-                    // Only update if the calculated speed (whole number) has changed
-                    if (calculated_speed_mph !== lastDisplayedCalculatedSpeed) {
-                        speedTextElement.innerText = calculated_speed_mph;
-                        lastDisplayedCalculatedSpeed = calculated_speed_mph;
+                    if (newDisplayText !== lastDisplayedText) {
+                        speedTextElement.innerText = newDisplayText;
+                        lastDisplayedText = newDisplayText;
                     }
                 }
-                // Update previousLocationData for the next calculation
                 previousLocationData = currentPos;
             });
         }
