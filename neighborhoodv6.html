@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Neighborhood Display v6 - Cleaned</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
@@ -27,110 +28,133 @@
         border-style: solid;
         text-align: center;
         border-radius: 0% 0% 0% 0%;
-        padding: 0px;
+        padding: 10px; 
+        box-sizing: border-box; 
         -webkit-text-stroke-width: 0px;
         -webkit-text-stroke-color: rgba(255, 255, 255, 1);
         text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
         width: 100%;
-        /* Ensure text itself can be vertically centered if needed */
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 100%; /* Make #text take full height of body for vertical centering */
+        height: 100%; 
       }
     </style>
   </head>
   <body>
     <div id="text">Loading location...</div>
-
     <script>
-      function wrappedEval(textExpression, contextData) {
-        let fn = Function(
-          `"use strict"; var data = this;return (${textExpression})`
-        );
-        return fn.bind(contextData)();
-      }
+      document.addEventListener('DOMContentLoaded', function() {
+        const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
+        const pullKey = "hnr2f1qtnecsp5bn"; 
+        const specificLang = "en";
+        
+        // Define feature types to request from the API. Focused on what's needed for display + general context.
+        const featureTypesForAPI = ["address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
+        const featureTypesForAPIString = featureTypesForAPI.join(',');
+        
+        // Define feature types we want to try and extract for our display string.
+        const featureParamsToExtract = ["address", "neighborhood", "locality", "place"]; 
+                                      
+        let lastGeocodeTime = 0;
+        const geocodeInterval = 1500; 
+        const textElement = document.getElementById("text");
 
-      var mapboxClient = mapboxSdk({
-        accessToken: "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w",
-      });
+        if (!pullKey) { // Though pullKey is hardcoded, this check remains for robustness if it were to change
+          if (textElement) textElement.innerText = "Error: Key not configured.";
+          console.error("Pull key is not configured in the script.");
+        } else {
+          if (typeof RealtimeIRL !== 'undefined') {
+            RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
+              const currentTime = new Date().getTime();
+              if (currentTime - lastGeocodeTime > geocodeInterval) {
+                lastGeocodeTime = currentTime; 
+                const lon = location.longitude;
+                const lat = location.latitude;
 
-      var params = new URLSearchParams(window.location.search);
-      var pullKey = params.get("key"); 
-
-      // Hardcoded values for this specific setup
-      var specificFormat = "${data.address ? data.address.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.place ? data.place.text : ''}";
-      var specificLang = "en"; // This is already a string, which is what v6 SDK expects
-
-      let lastGeocodeTime = 0;
-      const geocodeInterval = 1500; // 1500 milliseconds = 1.5 seconds
-
-      if (!pullKey) {
-        document.getElementById("text").innerText = "Error: Key missing from URL.";
-        console.error("Pull key is missing from URL parameters.");
-      } else {
-        RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-          const currentTime = new Date().getTime();
-          
-          if (currentTime - lastGeocodeTime > geocodeInterval) {
-            lastGeocodeTime = currentTime; 
-
-            // Use mapboxClient.geocodingV6 and update parameters
-            mapboxClient.geocodingV6 // Switched to geocodingV6
-              .reverseGeocode({
-                // v6 SDK expects longitude and latitude as separate properties
-                longitude: location.longitude,
-                latitude: location.latitude,
-                language: specificLang, // v6 SDK expects language as a string
-                // Optionally, you can specify types for v6 if needed, e.g.:
-                // types: ["address", "neighborhood", "locality", "place"] 
-              })
-              .send()
-              .then((response) => {
-                var context = {};
-                // Updated list of params for context; "poi" is removed as v6 Geocoding doesn't focus on it.
-                // Your format string doesn't use POI, so this is fine.
-                const featureParamsToExtract = [
-                  "country", "region", "postcode", "district",
-                  "place", "locality", "neighborhood", "address" 
-                  // "secondary_address" is also available in v6 if needed
-                ];
-
-                for (var param of featureParamsToExtract) {
-                  if (response.body && response.body.features) {
-                    context[param] = response.body.features.find((feature) =>
-                      feature.place_type && feature.place_type.includes(param)
-                    );
-                  } else {
-                    context[param] = undefined;
-                  }
+                if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                    console.error("Invalid location data received from RealtimeIRL:", location); 
+                    if (textElement) textElement.innerText = "Invalid GPS Data";
+                    return;
                 }
+
+                const apiUrl = \`https://api.mapbox.com/search/geocode/v6/reverse?longitude=\${lon}&latitude=\${lat}&types=\${featureTypesForAPIString}&language=\${specificLang}&access_token=\${MAPBOX_ACCESS_TOKEN}\`;
                 
-                var result = wrappedEval(
-                  "`" + specificFormat + "`",
-                  context
-                );
+                fetch(apiUrl)
+                    .then(async response => { 
+                        const responseText = await response.text(); 
+                        if (!response.ok) {
+                            let errorMsg = \`Mapbox API Error \${response.status}: \`;
+                            try { 
+                                const errorData = JSON.parse(responseText); 
+                                errorMsg += (errorData.message || responseText.substring(0,100)); 
+                            } catch (e) { 
+                                errorMsg += responseText.substring(0,100); 
+                            }
+                            throw new Error(errorMsg); 
+                        }
+                        try { 
+                            const jsonData = JSON.parse(responseText); 
+                            return jsonData; 
+                        } catch (e) {
+                            console.error("Mapbox API Response (2xx) - FAILED TO PARSE JSON:", e.message, "Raw Text:", responseText.substring(0,500)); 
+                            throw new Error("Mapbox response was not valid JSON despite 2xx status.");
+                        }
+                    })
+                    .then(dataFromMapbox => { 
+                        var context = {};
+                        if (dataFromMapbox && dataFromMapbox.features) {
+                            // First pass: find exact feature_type matches
+                            for (const param of featureParamsToExtract) {
+                                const foundFeature = dataFromMapbox.features.find(
+                                    (feature) => feature.properties && feature.properties.feature_type === param
+                                );
+                                if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
+                                    context[param] = { text: foundFeature.properties.name }; // Only store text if that's all needed
+                                }
+                            }
+                            // Second pass: populate from context of the main feature if still needed
+                            if (dataFromMapbox.features.length > 0 && dataFromMapbox.features[0].properties && dataFromMapbox.features[0].properties.context) {
+                                const mainFeatureContext = dataFromMapbox.features[0].properties.context;
+                                for (const param of featureParamsToExtract) {
+                                    if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
+                                        context[param] = { text: mainFeatureContext[param].name };
+                                    }
+                                }
+                            }
+                        }
+                        
+                        let resultParts = [];
+                        if (context.address && context.address.text) { resultParts.push(context.address.text); }
+                        if (context.neighborhood && context.neighborhood.text) { resultParts.push(context.neighborhood.text); }
+                        if (context.locality && context.locality.text) { resultParts.push(context.locality.text); }
+                        if (context.place && context.place.text) { resultParts.push(context.place.text); }
+                        
+                        let result = resultParts.join(', ');
+                        let cleanedResult = String(result).trim(); 
+                        cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
+                        cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
 
-                let cleanedResult = result.trim();
-                // Clean up potential leading/trailing commas and multiple commas
-                if (cleanedResult.startsWith(',')) cleanedResult = cleanedResult.substring(1).trim();
-                if (cleanedResult.endsWith(',')) cleanedResult = cleanedResult.slice(0, -1).trim();
-                cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',').replace(/,\s*$/, "");
-
-
-                if (cleanedResult && !cleanedResult.includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
-                  document.getElementById("text").innerText = cleanedResult;
-                 } else {
-                  document.getElementById("text").innerText = "Location details not found"; // More specific message
-                 }
-              })
-              .catch(error => {
-                  console.error("Mapbox Geocoding v6 error:", error);
-                  document.getElementById("text").innerText = "Geocoding API Error";
-              });
+                        if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
+                          textElement.innerText = cleanedResult;
+                        } else {
+                          textElement.innerText = "Location details not found";
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Geocoding Pipeline Error:", error); 
+                        if (textElement) { 
+                            textElement.innerText = "Geocoding Error"; 
+                        }
+                    });
+              } 
+            }); 
+          } else { 
+            console.error("CRITICAL ERROR: RealtimeIRL object is not defined. The RealtimeIRL API script likely failed to load or was blocked."); 
+            if (textElement) textElement.innerText = "Error: RealtimeIRL library not loaded.";
           }
-        });
-      }
+        } 
+      }); 
     </script>
   </body>
 </html>
