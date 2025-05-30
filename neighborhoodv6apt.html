@@ -2,72 +2,28 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display v6 - EvalFix</title>
+    <title>Neighborhood Display v6 - DirectFormat</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
     <style>
-      body {
-        background-color: rgba(0, 0, 0, 0);
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
-      #text {
-        color: rgba(223, 251, 38, 1);
-        font-size: 46px;
-        font-family: 'Open Sans', sans-serif;
-        font-weight: normal;
-        font-style: normal;
-        transform: rotate(0deg);
-        background-color: rgba(0, 0, 0, 0);
-        border-color: rgba(223, 251, 38, 1);
-        border-width: 0px;
-        border-style: solid;
-        text-align: center;
-        border-radius: 0% 0% 0% 0%;
-        padding: 10px; 
-        box-sizing: border-box; 
-        -webkit-text-stroke-width: 0px;
-        -webkit-text-stroke-color: rgba(255, 255, 255, 1);
-        text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%; 
-      }
+      body { background-color: rgba(0,0,0,0); margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+      #text { color: rgba(223,251,38,1); font-size:46px; font-family:'Open Sans',sans-serif; font-weight:normal; font-style:normal; transform:rotate(0deg); background-color:rgba(0,0,0,0); border-color:rgba(223,251,38,1); border-width:0px; border-style:solid; text-align:center; border-radius:0% 0% 0% 0%; padding:10px; box-sizing:border-box; -webkit-text-stroke-width:0px; -webkit-text-stroke-color:rgba(255,255,255,1); text-shadow:0px 0px 4px rgba(0,0,0,1); width:100%; display:flex; align-items:center; justify-content:center; height:100%; }
     </style>
   </head>
   <body>
     <div id="text">Loading location...</div>
-
     <script>
       document.addEventListener('DOMContentLoaded', function() {
-        // wrappedEval now expects templateLiteralStringAsExpression to be a string 
-        // that IS a valid template literal (i.e., includes the backticks).
-        function wrappedEval(templateLiteralStringAsExpression, contextData) {
-          try {
-            // The 'data' variable will be 'this' (contextData) inside the Function
-            // The expression is directly returned, as it's already a complete template literal string.
-            let fn = Function(`"use strict"; var data = this; return ${templateLiteralStringAsExpression};`);
-            return fn.bind(contextData)();
-          } catch (e) {
-            console.error("Error inside wrappedEval:", e, "\nAttempted to evaluate:", templateLiteralStringAsExpression, "\nWith context:", JSON.stringify(contextData, null, 2));
-            return "Eval Error"; 
-          }
-        }
+        // wrappedEval function is no longer needed
 
         const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
         const urlParams = new URLSearchParams(window.location.search);
         const pullKey = urlParams.get("key"); 
-
-        // IMPORTANT: specificFormat is now defined using BACKTICKS (`)
-        // This makes it an actual template literal string that can be evaluated by wrappedEval.
-        const specificFormat = \`${data.secondary_address && data.secondary_address.text ? data.secondary_address.text + ', ' : ''}\${data.address && data.address.text ? data.address.text + ', ' : ''}\${data.neighborhood && data.neighborhood.text ? data.neighborhood.text + ', ' : ''}\${data.locality && data.locality.text ? data.locality.text + ', ' : ''}\${data.place && data.place.text ? data.place.text : ''}\`;
         
+        // specificFormat is not used directly as an evaluable string with 'new Function' anymore
+        // Instead, we will build the string directly.
+
         const specificLang = "en";
         const featureTypesForAPI = ["address", "secondary_address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
         const featureTypesForAPIString = featureTypesForAPI.join(',');
@@ -85,12 +41,13 @@
           console.log("Attempting to set up RealtimeIRL listener for key:", pullKey);
           if (typeof RealtimeIRL !== 'undefined') {
             RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-              console.log("--- Location listener fired --- Location object:", JSON.stringify(location, null, 2)); 
+              console.log("--- Location listener fired --- Location object (raw):", JSON.stringify(location)); 
               const currentTime = new Date().getTime();
               if (currentTime - lastGeocodeTime > geocodeInterval) {
                 lastGeocodeTime = currentTime; 
                 const lon = location.longitude;
                 const lat = location.latitude;
+
                 if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
                     console.error("Invalid location data received:", location);
                     if (textElement) textElement.innerText = "Invalid GPS Data";
@@ -115,20 +72,20 @@
                             throw new Error(\`Received 2xx status, but response text was not valid JSON. Preview: \${responseText.substring(0,200)}\`);
                         }
                     })
-                    .then(data => { 
+                    .then(dataFromMapbox => { // Renamed 'data' to avoid conflict if 'data' is used in format
                         console.log("Data successfully parsed, processing context..."); 
-                        var context = {};
-                        if (data && data.features) {
+                        var context = {}; // This will be our 'data' for the template parts
+                        if (dataFromMapbox && dataFromMapbox.features) {
                             for (const param of featureParamsToExtract) {
-                                const foundFeature = data.features.find(
+                                const foundFeature = dataFromMapbox.features.find(
                                     (feature) => feature.properties && feature.properties.feature_type === param
                                 );
                                 if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
                                     context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
                                 }
                             }
-                            if (data.features.length > 0 && data.features[0].properties && data.features[0].properties.context) {
-                                const mainFeatureContext = data.features[0].properties.context;
+                            if (dataFromMapbox.features.length > 0 && dataFromMapbox.features[0].properties && dataFromMapbox.features[0].properties.context) {
+                                const mainFeatureContext = dataFromMapbox.features[0].properties.context;
                                 for (const param of featureParamsToExtract) {
                                     if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
                                         context[param] = { text: mainFeatureContext[param].name, ...mainFeatureContext[param] };
@@ -136,18 +93,37 @@
                                 }
                             }
                         }
-                        console.log("Populated Context:", JSON.stringify(context, null, 2));
+                        console.log("Populated Context for formatting:", JSON.stringify(context, null, 2));
 
-                        console.log("Calling wrappedEval with expression (should be a template literal string):", specificFormat);
-                        var result = wrappedEval(specificFormat, context); // specificFormat is now a template literal string
-                        console.log("Raw Result from wrappedEval:", result);
+                        // Direct string construction using the context
+                        let resultParts = [];
+                        if (context.secondary_address && context.secondary_address.text) {
+                            resultParts.push(context.secondary_address.text);
+                        }
+                        if (context.address && context.address.text) {
+                            resultParts.push(context.address.text);
+                        }
+                        if (context.neighborhood && context.neighborhood.text) {
+                            resultParts.push(context.neighborhood.text);
+                        }
+                        if (context.locality && context.locality.text) {
+                            resultParts.push(context.locality.text);
+                        }
+                        if (context.place && context.place.text) {
+                            resultParts.push(context.place.text);
+                        }
+                        
+                        let result = resultParts.join(', ');
+                        console.log("Constructed Result String:", result);
+
 
                         let cleanedResult = String(result).trim(); 
+                        // Clean up potential leading/trailing commas and multiple commas (though join should handle this better)
                         cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
                         cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
                         console.log("Cleaned Result:", cleanedResult);
 
-                        if (cleanedResult && cleanedResult !== "Eval Error" && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
+                        if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
                           textElement.innerText = cleanedResult;
                         } else {
                           textElement.innerText = "Location details not found";
@@ -162,7 +138,7 @@
               } 
             }); 
           } else { 
-            console.error("CRITICAL ERROR: RealtimeIRL object is not defined. The RealtimeIRL API script likely failed to load or was blocked.");
+            console.error("CRITICAL ERROR: RealtimeIRL object is not defined.");
             if (textElement) textElement.innerText = "Error: RealtimeIRL library failed to load.";
           }
         } 
