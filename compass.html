@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Heading Display</title>
+    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            color: rgba(223, 251, 38, 1);
+            font-size: 30px;
+            font-family: 'Open Sans', sans-serif;
+            font-weight: normal;
+            font-style: normal;
+            transform: rotate(0deg);
+            background-color: rgba(0, 0, 0, 0);
+            text-align: left; 
+            padding: 0px;
+            -webkit-text-stroke-width: 0px;
+            -webkit-text-stroke-color: rgba(255, 255, 255, 1);
+            text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
+            margin: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        #text_container {
+            display: flex;
+            justify-content: center; /* Or 'left' / 'flex-start' for left alignment */
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        #text {
+            /* Specific styles for the text element if needed */
+        }
+    </style>
+</head>
+<body>
+    <div id="text_container">
+        <div id="text">Loading...</div>
+    </div>
+
+    <script>
+        var COMPASS = {
+            en: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
+            es: ["N", "NE", "E", "SE", "S", "SO", "O", "NO"],
+            sv: ["N", "NÖ", "Ö", "SÖ", "S", "SV", "V", "NV"],
+            tr: ["K", "KD", "D", "GD", "G", "GB", "B", "KB"],
+        };
+
+        const textElement = document.getElementById("text");
+        const urlParams = new URLSearchParams(window.location.search);
+        const pullKey = urlParams.get("key");
+
+        // Hardcoded language
+        const lang = "en";
+        // Cache the active compass directions array (micro-optimization)
+        const activeCompassDirections = COMPASS[lang] || COMPASS["en"];
+
+        let lastDisplayedText = ""; // Variable to store the last displayed text
+
+        if (!pullKey) {
+            const errorMsg = "Error: 'key' parameter is missing in URL.";
+            textElement.innerText = errorMsg;
+            console.error("RealtimeIRL pullKey is missing from URL parameters.");
+        } else {
+            RealtimeIRL.forPullKey(pullKey).addHeadingListener(function (heading) {
+                const numericHeading = parseFloat(heading);
+                if (isNaN(numericHeading)) {
+                    console.error("Received non-numeric heading:", heading);
+                    const errorMsg = "Invalid data";
+                    if (textElement.innerText !== errorMsg) { // Avoid redundant update for error
+                        textElement.innerText = errorMsg;
+                    }
+                    return;
+                }
+
+                const cardinalIndex = Math.floor(((numericHeading + 22.5) % 360) / 45);
+                const cardinalDirection = activeCompassDirections[cardinalIndex];
+                const numericalDegree = Math.floor(numericHeading);
+
+                const newText = `${cardinalDirection} ${numericalDegree}\u00B0`;
+
+                // Only update the DOM if the text has actually changed
+                if (newText !== lastDisplayedText) {
+                    textElement.innerText = newText;
+                    lastDisplayedText = newText;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
