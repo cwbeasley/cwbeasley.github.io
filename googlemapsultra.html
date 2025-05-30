@@ -1,15 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script>
-    <link
-      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
-      rel="stylesheet"
-    />
-
     <style>
       html, body {
           margin: 0 !important;
@@ -21,19 +17,19 @@
       }
 
       .map-circle-wrapper {
-          width: 350px !important; /* Adjust this value for your desired circle size */
-          height: 350px !important; /* Must be equal to width for a perfect circle */
-          border-radius: 50% !important; /* Makes this div a perfect circle */
-          overflow: hidden !important; /* Clips content outside the circle */
-          border: 6px solid #4285F4 !important; /* Google-blue border */
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important; /* Adds shadow */
-          background-color: rgba(255, 255, 255, 0.05) !important; /* Subtle transparent background */
+          width: 350px !important; 
+          height: 350px !important; 
+          border-radius: 50% !important; 
+          overflow: hidden !important; 
+          border: 6px solid #4285F4 !important; 
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important; 
+          background-color: rgba(255, 255, 255, 0.05) !important; 
       }
 
       #wrapper {
           width: 100% !important;
           height: 100% !important;
-          position: relative !important; /* Maintain original positioning for map/marker */
+          position: relative !important; 
       }
 
       #map {
@@ -50,17 +46,16 @@
           border-radius: 50% !important;
           top: 50% !important;
           left: 50% !important;
-          transform: translate(-6px, -6px) !important; /* Re-center the marker precisely */
+          transform: translate(-6px, -6px) !important; 
           box-shadow: 0 0 10px cyan !important;
-          z-index: 10 !important; /* Ensure marker is always visible on top of the map */
+          z-index: 10 !important; 
       }
 
-      .gm-style-cc, .gmnoprint {
+      /* Google Maps specific UI hiding */
+      .gm-style-cc, .gmnoprint, .gm-fullscreen-control {
           display: none !important;
       }
-      .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right {
-          display: none !important;
-      }
+      /* .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right CSS rule removed */
     </style>
 
   </head>
@@ -96,7 +91,6 @@
 
       // Easing function (ease in-out quadratic) - makes animation feel smoother
       function easeInOutQuad(t) {
-        // Original easing function from user's code
         t /= 0.5;
         if (t < 1) return 0.5 * t * t;
         t--;
@@ -104,10 +98,10 @@
       }
       
       let animationFrameId = null; 
-      let lastPulledLocation = null; // Will store the start coordinates for the current animation
-      let targetPulledLocation = null; // Will store the end coordinates for the current animation
-      let animationStartTime = null; // Will store the timestamp when the current animation segment began
-      let currentAnimationDuration = 5000; // This will be dynamically set
+      let lastPulledLocation = null; 
+      let targetPulledLocation = null; 
+      let animationStartTime = null; 
+      let currentAnimationDuration = 5000;
 
       var params = new URLSearchParams(window.location.search);
       if(params.get("fullscreen")) {
@@ -116,51 +110,67 @@
         document.getElementById('wrapper').setAttribute('style', 'height: 100%; width: 100%; position: relative;');
       }
       var zoom = params.get("zoom");
-      var script = document.createElement("script");
-      // Load Google Maps API with the 'geometry' library for distance calculations
-      script.src =
-        "https://maps.googleapis.com/maps/api/js?key=" +
-        params.get("api_key") +
-        "&v=beta&libraries=geometry&callback=initMap"; // ADDED "&libraries=geometry"
-      var styles = params.get("style");
-      script.async = true;
+      var googleMapsScript = document.createElement("script"); // Renamed 'script' to 'googleMapsScript' for clarity
+      
+      const apiKey = params.get("api_key");
+      if (!apiKey) {
+          console.error("Google Maps API key is missing from URL parameters.");
+          const mapDiv = document.getElementById("map");
+          if (mapDiv) mapDiv.innerText = "Map API key missing.";
+      } else {
+          googleMapsScript.src =
+            "https://maps.googleapis.com/maps/api/js?key=" +
+            apiKey +
+            "&v=weekly&libraries=geometry&callback=initMap"; // Changed v=beta to v=weekly
+          googleMapsScript.async = true;
+          document.head.appendChild(googleMapsScript);
+      }
+      
+      var stylesParamValue = params.get("style"); // Renamed 'styles' to 'stylesParamValue' to avoid conflict
       var map; 
 
       window.initMap = function () {
+        let mapStyles = [];
+        if (stylesParamValue) {
+            try {
+                mapStyles = JSON.parse(atob(decodeURIComponent(stylesParamValue)));
+            } catch (e) {
+                console.error("Error parsing map styles from URL:", e);
+            }
+        }
+
         map = new google.maps.Map(document.getElementById("map"), {
           center: { lat: -34.397, lng: 150.644 }, 
           zoom: zoom ? Number(zoom) : 17, 
           disableDefaultUI: true,
-          styles: styles ? JSON.parse(atob(decodeURIComponent(styles))) : [],
-          mode: '3d', 
-          tilt: 45,   
-          heading: 0  
+          styles: mapStyles,
+          // mode: '3d' removed as it's not a standard constructor option
+          tilt: 45,   // Standard option for enabling tilt
+          heading: 0  // Standard option for enabling heading/rotation
         });
 
-        // Initialize lastPulledLocation to the map's initial center
-        // This represents the starting point before any animation or the end of the last one.
         lastPulledLocation = map.getCenter().toJSON();
 
         const pullKey = new URLSearchParams(window.location.search).get("key");
+        if (!pullKey) {
+            console.error("RealtimeIRL pull key is missing from URL parameters.");
+            // Optionally update UI to indicate this issue
+            return; 
+        }
         RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-          let currentMapCenter = map.getCenter(); // Get map's current center for animation start
-          let newTargetLocation = { lng: location.longitude, lat: location.latitude }; // The newly pulled location
+          let currentMapCenter = map.getCenter(); 
+          let newTargetLocation = { lng: location.longitude, lat: location.latitude };
 
-          // --- DYNAMIC DURATION CALCULATION BASED ON DISTANCE ---
           let distance_meters = 0;
           if (google.maps.geometry && google.maps.geometry.spherical) {
               let point1 = new google.maps.LatLng(currentMapCenter.lat(), currentMapCenter.lng());
               let point2 = new google.maps.LatLng(newTargetLocation.lat, newTargetLocation.lng);
               distance_meters = google.maps.geometry.spherical.computeDistanceBetween(point1, point2);
           } else {
-              console.warn("Google Maps Geometry library not loaded! Cannot calculate distance for smooth animation. Using default duration.");
+              console.warn("Google Maps Geometry library not loaded! Using default animation duration.");
               currentAnimationDuration = 5000; 
           }
-
-          // This block for recalculating currentAnimationDuration was inside the if in original,
-          // keeping it that way for minimal change beyond bug fix.
-          // Ideally, it should only run if geometry is available or have a clear else.
-          // For now, it will use the potentially stale currentAnimationDuration if geometry lib isn't loaded after the first warning.
+ 
           const MIN_ANIM_DURATION_MS = 1000; 
           const MAX_ANIM_DURATION_MS = 5000; 
           const DISTANCE_SCALE_METERS = 250; 
@@ -168,31 +178,22 @@
           let normalizedDistance = Math.min(distance_meters / DISTANCE_SCALE_METERS, 1);
           currentAnimationDuration = MIN_ANIM_DURATION_MS + (MAX_ANIM_DURATION_MS - MIN_ANIM_DURATION_MS) * normalizedDistance;
           currentAnimationDuration = Math.max(currentAnimationDuration, MIN_ANIM_DURATION_MS);
-          // --- END DYNAMIC DURATION CALCULATION ---
 
-          // *** ANIMATION TIMING BUG FIX STARTS HERE ***
-          // Set the true start point for this animation segment
           lastPulledLocation = currentMapCenter.toJSON(); 
-          targetPulledLocation = newTargetLocation; // Set the target
-          animationStartTime = performance.now(); // Record the timestamp for the start of this segment
+          targetPulledLocation = newTargetLocation;
+          animationStartTime = performance.now(); 
           
           if (animationFrameId) {
-              cancelAnimationFrame(animationFrameId); // Cancel any ongoing animation
+              cancelAnimationFrame(animationFrameId);
           }
-          // Initiate the animation loop using requestAnimationFrame
           animationFrameId = requestAnimationFrame(animateMapPosition);
-          // *** ANIMATION TIMING BUG FIX ENDS HERE ***
         });
       };
-      document.head.appendChild(script); 
+      // Note: 'document.head.appendChild(script)' moved into the 'else' block for API key check
 
-      // The animation loop function
-      function animateMapPosition(timestamp) { // timestamp is now reliably provided by requestAnimationFrame
-          // animationStartTime is the timestamp when this current animation segment (from lastPulledLocation to targetPulledLocation) began.
-          // It's set in the RealtimeIRL listener.
-
+      function animateMapPosition(timestamp) {
           const elapsed = timestamp - animationStartTime;
-          let progress = Math.min(elapsed / currentAnimationDuration, 1); // Use dynamic duration here!
+          let progress = Math.min(elapsed / currentAnimationDuration, 1);
 
           const easedProgress = easeInOutQuad(progress); 
 
@@ -202,8 +203,8 @@
           if (progress < 1) {
               animationFrameId = requestAnimationFrame(animateMapPosition);
           } else {
-              map.setCenter(targetPulledLocation); // Ensure it ends exactly at the target
-              lastPulledLocation = targetPulledLocation; // Update for consistency, though listener resets it from map.getCenter()
+              map.setCenter(targetPulledLocation); 
+              lastPulledLocation = targetPulledLocation; 
               animationFrameId = null; 
           }
       }
