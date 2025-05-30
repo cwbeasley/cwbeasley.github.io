@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Date and Time Display</title>
+    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/luxon@2.0.1/build/global/luxon.min.js"
+      integrity="sha256-BdqBGuaawDzMtW2Wn9ISUuYKUY/A7d5NVcj6Ix3jwv8="
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/browser-geo-tz@latest/dist/geotz.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+
+    <style>
+        /* General page setup for an overlay */
+        body {
+            background-color: rgba(0, 0, 0, 0); /* Transparent background */
+            margin: 0;
+            padding: 10px; /* Add some padding around the text block */
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            display: flex;
+            /* Align text block to top-left, adjust as needed */
+            justify-content: flex-start; 
+            align-items: flex-start;
+        }
+
+        /* Container for the date/time text, applying the decoded styles */
+        #datetime_output_container {
+            color: rgba(223, 251, 38, 1);
+            font-size: 45px;
+            font-family: 'Open Sans', sans-serif; /* Fallback included */
+            font-weight: bold;
+            font-style: normal;
+            transform: rotate(0deg);
+            /* background-color is transparent by inheriting from body or default */
+            /* border-color: rgba(223, 251, 38, 1); */ /* No border for the container */
+            /* border-width: 0px; */
+            /* border-style: solid; */
+            text-align: left;
+            /* border-radius: 0% 0% 0% 0%; */
+            padding: 0px; /* Inner padding for the container, if any, is 0 */
+            -webkit-text-stroke-width: 0px;
+            -webkit-text-stroke-color: rgba(255, 255, 255, 1);
+            text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
+        }
+
+        #time_display {
+            /* Specific styling for the time line if needed */
+        }
+
+        #date_display {
+            /* Specific styling for the date line if needed */
+        }
+    </style>
+</head>
+<body>
+    <div id="datetime_output_container">
+        <div id="date_display">Loading date...</div>
+        <div id="time_display">Loading time...</div>
+    </div>
+
+    <script>
+        const timeDisplayElement = document.getElementById("time_display");
+        const dateDisplayElement = document.getElementById("date_display");
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const pullKey = urlParams.get("key");
+
+        // Hardcoded parameters
+        const lang = "en";
+        const formatTime = "TTT";       // For displaying full time with seconds and zone
+        const formatDate = "DD EEEE";  // For displaying day of month and full weekday name (e.g., 30 Friday)
+
+        let latestLocation = null;
+        let zoneId = null; // Will store the IANA timezone ID like "America/Chicago"
+
+        function refreshTzOffset() {
+            if (!latestLocation) return;
+
+            // GeoTZ.find returns a promise
+            GeoTZ.find(latestLocation.latitude, latestLocation.longitude)
+                .then(function (timezones) {
+                    zoneId = timezones.length > 0 ? timezones[0] : "UTC"; // Default to UTC if no timezone found
+                })
+                .catch(function(error) {
+                    console.error("Error finding timezone:", error);
+                    zoneId = "UTC"; // Fallback on error
+                });
+        }
+        
+        if (!pullKey) {
+            const errorMsg = "Error: 'key' parameter missing.";
+            // Display error appropriately if elements exist
+            if (dateDisplayElement) dateDisplayElement.innerText = errorMsg;
+            if (timeDisplayElement) timeDisplayElement.innerText = ""; 
+            console.error("RealtimeIRL pullKey is missing from URL parameters.");
+        } else {
+            RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
+                latestLocation = location;
+                refreshTzOffset();
+            });
+
+            setInterval(function () {
+                if (zoneId == null) { // Wait until timezone is determined
+                    return;
+                }
+
+                const now = luxon.DateTime.now().setZone(zoneId).setLocale(lang);
+                
+                // JavaScript populates based on ID, so this logic remains the same
+                if (timeDisplayElement) {
+                    timeDisplayElement.innerText = now.toFormat(formatTime);
+                }
+                if (dateDisplayElement) {
+                    dateDisplayElement.innerText = now.toFormat(formatDate);
+                }
+            }, 1000); // Update every second
+        }
+    </script>
+</body>
+</html>
