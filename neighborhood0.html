@@ -3,10 +3,8 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
-    <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
-    
+    <script defer src="https://overlays.rtirl.com/indicator.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
-
     <style>
       body {
         /* Ensure body is transparent and takes full space for overlay */
@@ -60,7 +58,7 @@
 
       // Mapbox client initialization with your access token
       var mapboxClient = mapboxSdk({
-        accessToken: "sk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmFhcW5uZzAyNXUyam9rYTl2dmd3aGMifQ.Ot9zFhPCkbOLqD5XPGka8Q",
+        accessToken: "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w", // <-- UPDATED TOKEN HERE
       });
 
       var params = new URLSearchParams(window.location.search);
@@ -73,7 +71,7 @@
 
       // --- 5-SECOND REFRESH LOGIC FOR TEXT OVERLAY ---
       let lastGeocodeTime = 0;
-      const geocodeInterval = 5000; // 5000 milliseconds = 5 seconds
+      const geocodeInterval = 1500; // 5000 milliseconds = 5 seconds
 
       // This function will be called every time a new location update is received
       RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
