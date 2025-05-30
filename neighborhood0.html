@@ -52,7 +52,7 @@
 
       // Values from the decoded URL are now hardcoded:
       var pullKey = "hnr2f1qtnecsp5bn";
-      var specificFormat = "${data.poi ? data.poi.text + ', ' : ''}${data.address ? data.address.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.district ? data.district.text + ', ' : ''}${data.place ? data.place.text : ''}";
+      var specificFormat = "${data.address ? data.address.text + ', ' : ''}${data.place ? data.place.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text : ''}";
       var specificLang = "en";
 
       let lastGeocodeTime = 0;
