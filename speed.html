@@ -2,84 +2,117 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Speed Limit Overlay</title>
+    <title>Calculated Speed Display (MPH)</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
-
+    
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
 
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: rgba(0,0,0,0); /* Transparent for overlays */
+            background-color: rgba(0,0,0,0); /* Transparent background for overlay */
             display: flex;
-            justify-content: center; /* Centers the sign horizontally */
-            align-items: center; /* Centers the sign vertically */
+            justify-content: center; /* Center the text block horizontally */
+            align-items: center; /* Center the text block vertically */
             height: 100vh; /* Full viewport height */
-            overflow: hidden; /* Prevents scrollbars if sign is larger than viewport */
+            overflow: hidden; /* Prevent scrollbars */
         }
 
-        #speed_sign_container {
-            width: 200px; /* Initial width, adjust as needed */
-            height: 267px; /* Initial height, adjust to maintain aspect ratio & desired size */
-            background-image: url("https://cwbeasley.github.io/speedsign.jpg");
-            background-size: contain; /* Ensures the whole sign is visible and maintains aspect ratio */
-            background-repeat: no-repeat;
-            background-position: center;
-            position: relative; /* For absolute positioning of the text overlay */
-            /* border: 1px dashed red; */ /* Uncomment to see the container bounds during positioning */
-        }
-
-        #speed_text_overlay {
-            /* Text styles from your original CSS parameters */
+        #speed_text {
             color: rgba(223, 251, 38, 1);
+            font-size: 45px;
             font-family: 'Open Sans', sans-serif;
             font-weight: bold;
             font-style: normal;
-            text-align: center; /* Horizontally centers the speed number within this div */
-            padding: 0px;
+            transform: rotate(0deg); 
+            text-align: center; 
+            padding: 0px; 
             -webkit-text-stroke-width: 0px;
             -webkit-text-stroke-color: rgba(255, 255, 255, 1);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* A slightly visible shadow */
-            
-            /* Positioning and Sizing - VERY LIKELY NEEDS ADJUSTMENT */
-            position: absolute;
-            font-size: 60px;  /* Adjust this to fit the number well within the sign's circle */
-            width: 70%;       /* Adjust width of the text's bounding box (percentage of parent) */
-            left: 50%;        /* Center the text's bounding box horizontally */
-            top: 49%;         /* Adjust vertical position (percentage from the top) */
-                              /* This value (49%) is a guess to center in the white circle */
-            transform: translate(-50%, -50%); /* Fine-tunes centering */
-            line-height: 1;   /* Helps in vertical centering if font has unusual line height */
-            /* background-color: rgba(255,0,0,0.2); */ /* Uncomment to see text overlay bounds */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
         }
     </style>
 </head>
 <body>
-    <div id="speed_sign_container">
-        <div id="speed_text_overlay">0</div> </div>
-
-    <script>
-        const speedTextElement = document.getElementById("speed_text_overlay");
+    <div id="speed_text">0</div> <script>
+        const speedTextElement = document.getElementById("speed_text");
         const urlParams = new URLSearchParams(window.location.search);
         const pullKey = urlParams.get("key");
 
         const MPS_TO_MPH = 2.23694; // Conversion factor from meters/second to MPH
-        let lastDisplayedSpeed = null;
+        let previousLocationData = null; // To store {lat, lon, time} of the last point
+        let lastDisplayedCalculatedSpeed = 0; // Initialize to 0, as initial display is 0
+
+        // Function to calculate distance between two lat/lon points using Haversine formula
+        function calculateHaversineDistance(coords1, coords2) { // coords = {lat, lon}
+            function toRad(x) {
+                return x * Math.PI / 180;
+            }
+            const R = 6371000; // Earth's radius in meters
+
+            const dLat = toRad(coords2.lat - coords1.lat);
+            const dLon = toRad(coords2.lon - coords1.lon);
+            const lat1Rad = toRad(coords1.lat);
+            const lat2Rad = toRad(coords2.lat);
+
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1Rad) * Math.cos(lat2Rad);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            
+            return R * c; // Distance in meters
+        }
 
         if (!pullKey) {
-            speedTextElement.innerText = "ERR"; // Or some other error indication
+            speedTextElement.innerText = "ERR"; 
             console.error("RealtimeIRL pullKey is missing from URL parameters.");
         } else {
-            RealtimeIRL.forPullKey(pullKey).addSpeedListener(function(speed_mps) {
-                // Convert speed to MPH and round it to the nearest whole number
-                const speed_mph = Math.round(speed_mps * MPS_TO_MPH);
-
-                // Only update if the speed has changed
-                if (speed_mph !== lastDisplayedSpeed) {
-                    speedTextElement.innerText = speed_mph;
-                    lastDisplayedSpeed = speed_mph;
+            RealtimeIRL.forPullKey(pullKey).addLocationListener(function(currentLocation) {
+                // Ensure current location has latitude, longitude, and a timestamp
+                if (typeof currentLocation.latitude !== 'number' || 
+                    typeof currentLocation.longitude !== 'number') {
+                    console.warn("Received location update without valid lat/lon.", currentLocation);
+                    return;
                 }
+
+                const currentPos = {
+                    lat: currentLocation.latitude,
+                    lon: currentLocation.longitude,
+                    // Use device timestamp if available and seems valid, otherwise current browser time
+                    time: (currentLocation.timestamp && currentLocation.timestamp > 1000000000000) ? // Basic sanity check for ms timestamp
+                          currentLocation.timestamp : Date.now() 
+                };
+
+                if (previousLocationData) {
+                    const distanceMeters = calculateHaversineDistance(
+                        { lat: previousLocationData.lat, lon: previousLocationData.lon },
+                        { lat: currentPos.lat, lon: currentPos.lon }
+                    );
+
+                    const timeDiffSeconds = (currentPos.time - previousLocationData.time) / 1000;
+
+                    let calculated_speed_mph = 0; // Default to 0 if no movement or time diff
+
+                    if (timeDiffSeconds > 0.05) { // Only calculate if time difference is somewhat significant
+                        const speed_mps = distanceMeters / timeDiffSeconds;
+                        calculated_speed_mph = Math.round(speed_mps * MPS_TO_MPH); // Rounded to whole number
+                    } else if (distanceMeters === 0) {
+                        calculated_speed_mph = 0; // No distance moved
+                    } else {
+                        // Time difference too small, or negative. Maintain last speed or set to 0 if very noisy.
+                        // For simplicity, if time diff is tiny, we can assume speed is effectively the last known or 0 if last was also based on tiny diff.
+                        // We can also just display the last valid calculated speed if it's not 0, or default to 0.
+                        // Sticking to calculated_speed_mph = 0 (from initialization) if timeDiffSeconds is too small.
+                    }
+                    
+                    // Only update if the calculated speed (whole number) has changed
+                    if (calculated_speed_mph !== lastDisplayedCalculatedSpeed) {
+                        speedTextElement.innerText = calculated_speed_mph;
+                        lastDisplayedCalculatedSpeed = calculated_speed_mph;
+                    }
+                }
+                // Update previousLocationData for the next calculation
+                previousLocationData = currentPos;
             });
         }
     </script>
