@@ -58,7 +58,7 @@
 
       // Mapbox client initialization with your access token
       var mapboxClient = mapboxSdk({
-        accessToken: "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w", // <-- UPDATED TOKEN HERE
+        accessToken: "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w",
       });
 
       var params = new URLSearchParams(window.location.search);
@@ -71,7 +71,7 @@
 
       // --- 5-SECOND REFRESH LOGIC FOR TEXT OVERLAY ---
       let lastGeocodeTime = 0;
-      const geocodeInterval = 1500; // 5000 milliseconds = 5 seconds
+      const geocodeInterval = 5000; // 5000 milliseconds = 5 seconds
 
       // This function will be called every time a new location update is received
       RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
@@ -81,8 +81,8 @@
         if (currentTime - lastGeocodeTime > geocodeInterval) {
           lastGeocodeTime = currentTime; // Update the time of the last request
 
-          // TEMPORARY: Show "Refreshing..." to see updates in action
-          document.getElementById("text").innerText = "Refreshing...";
+          // Removed: console.log("Attempting text update at " + new Date().toLocaleTimeString());
+          // Removed: document.getElementById("text").innerText = "Refreshing...";
 
           mapboxClient.geocoding
             .reverseGeocode({
