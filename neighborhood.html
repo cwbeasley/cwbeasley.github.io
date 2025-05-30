@@ -3,7 +3,7 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
-    <script defer src="https://overlays.rtirl.com/indicator.js"></script>
+    <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
     <style>
       body {
@@ -50,26 +50,28 @@
         accessToken: "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w",
       });
 
-      // Values from the decoded URL are now hardcoded:
-      var pullKey = "hnr2f1qtnecsp5bn";
+      var params = new URLSearchParams(window.location.search);
+      
+      // Removed hardcoded pullKey - now it's read from URL params
+      var pullKey = params.get("key"); 
+
+      // Hardcoded values for this specific setup
       var specificFormat = "${data.address ? data.address.text + ', ' : ''}${data.place ? data.place.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text : ''}";
       var specificLang = "en";
 
       let lastGeocodeTime = 0;
-      const geocodeInterval = 1500; // User's current interval
+      const geocodeInterval = 1500; // 1500 milliseconds = 1.5 seconds
 
       RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
         const currentTime = new Date().getTime();
         
         if (currentTime - lastGeocodeTime > geocodeInterval) {
           lastGeocodeTime = currentTime; 
-          // "Refreshing..." message removed for smoother updates.
-          // The #text div will continue to display its current content while fetching.
 
           mapboxClient.geocoding
             .reverseGeocode({
               query: [location.longitude, location.latitude],
-              language: [specificLang], // Using the hardcoded language
+              language: [specificLang],
             })
             .send()
             .then((response) => {
@@ -83,19 +85,17 @@
                 );
               }
               var result = wrappedEval(
-                "`" + specificFormat + "`", // Using the hardcoded format
+                "`" + specificFormat + "`",
                 context
               );
               if (!result.includes("undefined") && result.trim() !== ', , , ,') { 
-                document.getElementById("text").innerText = result.replace(/,\s*$/, "").replace(/,\s*,/g, ','); // User's current cleaning logic
+                document.getElementById("text").innerText = result.replace(/,\s*$/, "").replace(/,\s*,/g, ',').replace(/^,\s*/, ''); 
                } else {
-                document.getElementById("text").innerText = "Location not found...";
+                 document.getElementById("text").innerText = "Location not found...";
                }
             })
             .catch(error => {
                 console.error("Mapbox geocoding error:", error);
-                // On error, do NOT change the text.
-                // The #text div will continue to show the last successful value.
             });
         }
       });
