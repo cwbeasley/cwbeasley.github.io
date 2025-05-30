@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display v6 - Cleaned</title>
+    <title>Neighborhood Display v6 - Key from URL</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
@@ -46,24 +46,27 @@
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
-        const pullKey = "hnr2f1qtnecsp5bn"; 
+        
+        // Read pullKey from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const pullKey = urlParams.get("key"); 
+        
         const specificLang = "en";
         
-        // Define feature types to request from the API. Focused on what's needed for display + general context.
         const featureTypesForAPI = ["address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
         const featureTypesForAPIString = featureTypesForAPI.join(',');
         
-        // Define feature types we want to try and extract for our display string.
         const featureParamsToExtract = ["address", "neighborhood", "locality", "place"]; 
                                       
         let lastGeocodeTime = 0;
         const geocodeInterval = 1500; 
         const textElement = document.getElementById("text");
 
-        if (!pullKey) { // Though pullKey is hardcoded, this check remains for robustness if it were to change
-          if (textElement) textElement.innerText = "Error: Key not configured.";
-          console.error("Pull key is not configured in the script.");
+        if (!pullKey) {
+          if (textElement) textElement.innerText = "Error: 'key' parameter missing from URL.";
+          console.error("Pull key is missing from URL parameters. Please append ?key=YOUR_KEY to the URL.");
         } else {
+          console.log("Script loaded. Using pull key from URL:", pullKey); // Minimal log
           if (typeof RealtimeIRL !== 'undefined') {
             RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
               const currentTime = new Date().getTime();
@@ -84,7 +87,8 @@
                     .then(async response => { 
                         const responseText = await response.text(); 
                         if (!response.ok) {
-                            let errorMsg = \`Mapbox API Error \${response.status}: \`;
+                            console.error("Mapbox API HTTP Error - Status:", response.status, "Response Text (snippet):", responseText.substring(0,500));
+                            let errorMsg = \`HTTP error \${response.status}: \`;
                             try { 
                                 const errorData = JSON.parse(responseText); 
                                 errorMsg += (errorData.message || responseText.substring(0,100)); 
@@ -97,23 +101,21 @@
                             const jsonData = JSON.parse(responseText); 
                             return jsonData; 
                         } catch (e) {
-                            console.error("Mapbox API Response (2xx) - FAILED TO PARSE JSON:", e.message, "Raw Text:", responseText.substring(0,500)); 
+                            console.error("Mapbox API Response (2xx) - FAILED TO PARSE JSON. Error:", e.message, "Raw Text (snippet):", responseText.substring(0,500)); 
                             throw new Error("Mapbox response was not valid JSON despite 2xx status.");
                         }
                     })
                     .then(dataFromMapbox => { 
                         var context = {};
                         if (dataFromMapbox && dataFromMapbox.features) {
-                            // First pass: find exact feature_type matches
                             for (const param of featureParamsToExtract) {
                                 const foundFeature = dataFromMapbox.features.find(
                                     (feature) => feature.properties && feature.properties.feature_type === param
                                 );
                                 if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
-                                    context[param] = { text: foundFeature.properties.name }; // Only store text if that's all needed
+                                    context[param] = { text: foundFeature.properties.name };
                                 }
                             }
-                            // Second pass: populate from context of the main feature if still needed
                             if (dataFromMapbox.features.length > 0 && dataFromMapbox.features[0].properties && dataFromMapbox.features[0].properties.context) {
                                 const mainFeatureContext = dataFromMapbox.features[0].properties.context;
                                 for (const param of featureParamsToExtract) {
@@ -142,7 +144,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error("Geocoding Pipeline Error:", error); 
+                        console.error("Geocoding Pipeline Error:", error.message); 
                         if (textElement) { 
                             textElement.innerText = "Geocoding Error"; 
                         }
