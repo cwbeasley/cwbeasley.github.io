@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Neighborhood Display v6</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
@@ -27,7 +28,8 @@
         border-style: solid;
         text-align: center;
         border-radius: 0% 0% 0% 0%;
-        padding: 0px;
+        padding: 10px; /* Added a little padding for breathing room */
+        box-sizing: border-box; /* Ensure padding doesn't make it overflow */
         -webkit-text-stroke-width: 0px;
         -webkit-text-stroke-color: rgba(255, 255, 255, 1);
         text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
@@ -44,28 +46,46 @@
 
     <script>
       function wrappedEval(textExpression, contextData) {
+        // Ensure data is available for evaluation
         let fn = Function(
-          `"use strict"; var data = this;return (${textExpression})`
+          `"use strict"; 
+           var data = this; 
+           // Helper to safely access properties like data.address.text
+           function safeGet(obj, path) {
+             return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+           }
+           return (${textExpression})`
         );
         return fn.bind(contextData)();
       }
 
-      var mapboxClient = mapboxSdk({
-        accessToken: "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w",
-      });
+      // Your Mapbox Access Token (pk token)
+      const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
 
-      var params = new URLSearchParams(window.location.search);
-      var pullKey = params.get("key"); 
+      const urlParams = new URLSearchParams(window.location.search);
+      const pullKey = urlParams.get("key"); 
 
-      // Updated specificFormat to include secondary_address first for smallest to largest flow
-      var specificFormat = "${data.secondary_address ? data.secondary_address.text + ', ' : ''}${data.address ? data.address.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.place ? data.place.text : ''}";
-      var specificLang = "en";
+      // Format string for displaying location details
+      const specificFormat = "${ data.secondary_address && data.secondary_address.text ? data.secondary_address.text + ', ' : '' }${ data.address && data.address.text ? data.address.text + ', ' : '' }${ data.neighborhood && data.neighborhood.text ? data.neighborhood.text + ', ' : '' }${ data.locality && data.locality.text ? data.locality.text + ', ' : '' }${ data.place && data.place.text ? data.place.text : '' }";
+      const specificLang = "en";
+      
+      // Feature types to request from the API and then extract
+      const featureTypesForAPI = ["address", "secondary_address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
+      const featureTypesForAPIString = featureTypesForAPI.join(',');
+      
+      // Feature types we want to populate in our context object for the format string
+      const featureParamsToExtract = [
+          "secondary_address", "address", "neighborhood", "locality", "place", 
+          "district", "region", "postcode", "country"
+      ];
+
 
       let lastGeocodeTime = 0;
       const geocodeInterval = 1500; 
+      const textElement = document.getElementById("text");
 
       if (!pullKey) {
-        document.getElementById("text").innerText = "Error: Key missing from URL.";
+        textElement.innerText = "Error: Key missing from URL.";
         console.error("Pull key is missing from URL parameters.");
       } else {
         RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
@@ -74,53 +94,73 @@
           if (currentTime - lastGeocodeTime > geocodeInterval) {
             lastGeocodeTime = currentTime; 
 
-            mapboxClient.geocodingV6
-              .reverseGeocode({
-                longitude: location.longitude,
-                latitude: location.latitude,
-                language: specificLang,
-                // You can request specific types to potentially get secondary_address if available
-                types: ["address", "secondary_address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"]
-              })
-              .send()
-              .then((response) => {
-                var context = {};
-                // Added "secondary_address" to the list of parameters to extract.
-                // The order here is just for extraction; display order is controlled by specificFormat.
-                const featureParamsToExtract = [
-                  "secondary_address", "address", "neighborhood", "locality", "place", 
-                  "district", "region", "postcode", "country"
-                ];
+            const lon = location.longitude;
+            const lat = location.latitude;
 
-                for (var param of featureParamsToExtract) {
-                  if (response.body && response.body.features) {
-                    context[param] = response.body.features.find((feature) =>
-                      feature.place_type && feature.place_type.includes(param)
-                    );
-                  } else {
-                    context[param] = undefined;
-                  }
+            const apiUrl = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lon}&latitude=${lat}&types=${featureTypesForAPIString}&language=${specificLang}&access_token=${MAPBOX_ACCESS_TOKEN}`;
+
+            fetch(apiUrl)
+              .then(response => {
+                if (!response.ok) {
+                  return response.json().then(errorData => {
+                    throw new Error(`HTTP error ${response.status}: ${errorData.message || response.statusText}`);
+                  }).catch(() => {
+                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                  });
                 }
+                return response.json();
+              })
+              .then(data => {
+                var context = {};
+                // console.log("Mapbox API v6 Response:", JSON.stringify(data, null, 2)); // For debugging
+
+                if (data && data.features) {
+                    // First pass: find exact feature_type matches from the top-level features
+                    for (const param of featureParamsToExtract) {
+                        const foundFeature = data.features.find(
+                            (feature) => feature.properties && feature.properties.feature_type === param
+                        );
+                        if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
+                            context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
+                        }
+                    }
+
+                    // Second pass: if some context parts are still missing,
+                    // try to populate them from the `context` object of the most specific feature found (usually features[0])
+                    if (data.features.length > 0 && data.features[0].properties && data.features[0].properties.context) {
+                        const mainFeatureContext = data.features[0].properties.context;
+                        for (const param of featureParamsToExtract) {
+                            if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
+                                context[param] = { text: mainFeatureContext[param].name, ...mainFeatureContext[param] };
+                            }
+                        }
+                    }
+                }
+                // console.log("Populated Context:", context); // For debugging
                 
-                var result = wrappedEval(
-                  "`" + specificFormat + "`",
-                  context
-                );
+                // Refined specificFormat for safety within wrappedEval, checking existence of data.X.text
+                // The original specificFormat already does this with ternary, which is good.
+                // We ensure 'text' property is set in context items above.
+                var result = wrappedEval(specificFormat, context);
+                // console.log("Raw Result from wrappedEval:", result); // For debugging
+
 
                 let cleanedResult = result.trim();
-                if (cleanedResult.startsWith(',')) cleanedResult = cleanedResult.substring(1).trim();
-                if (cleanedResult.endsWith(',')) cleanedResult = cleanedResult.slice(0, -1).trim();
-                cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',').replace(/,\s*$/, "");
+                // More robust cleaning of multiple/leading/trailing commas
+                cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); // Remove leading/trailing commas and spaces
+                cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    // Replace multiple commas with a single one
+                // console.log("Cleaned Result:", cleanedResult); // For debugging
 
-                if (cleanedResult && !cleanedResult.includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
-                  document.getElementById("text").innerText = cleanedResult;
+
+                if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
+                  textElement.innerText = cleanedResult;
                  } else {
-                  document.getElementById("text").innerText = "Location details not found";
+                  textElement.innerText = "Location details not found";
                  }
               })
               .catch(error => {
-                  console.error("Mapbox Geocoding v6 error:", error);
-                  document.getElementById("text").innerText = "Geocoding API Error";
+                  console.error("Mapbox Geocoding v6 (Fetch) error:", error.message);
+                  textElement.innerText = "Geocoding API Error";
               });
           }
         });
