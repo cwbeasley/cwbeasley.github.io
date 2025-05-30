@@ -2,130 +2,169 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display v6 - Debug v5</title>
+    <title>Neighborhood Display v6 - Debug SyntaxCheck</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
     <style>
-      body { background-color: rgba(0,0,0,0); margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
-      #text { color: rgba(223,251,38,1); font-size:46px; font-family:'Open Sans',sans-serif; font-weight:normal; font-style:normal; transform:rotate(0deg); background-color:rgba(0,0,0,0); border-color:rgba(223,251,38,1); border-width:0px; border-style:solid; text-align:center; border-radius:0% 0% 0% 0%; padding:10px; box-sizing:border-box; -webkit-text-stroke-width:0px; -webkit-text-stroke-color:rgba(255,255,255,1); text-shadow:0px 0px 4px rgba(0,0,0,1); width:100%; display:flex; align-items:center; justify-content:center; height:100%; }
+      body {
+        background-color: rgba(0, 0, 0, 0);
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #text {
+        color: rgba(223, 251, 38, 1);
+        font-size: 46px;
+        font-family: 'Open Sans', sans-serif;
+        font-weight: normal;
+        font-style: normal;
+        transform: rotate(0deg);
+        background-color: rgba(0, 0, 0, 0);
+        border-color: rgba(223, 251, 38, 1);
+        border-width: 0px;
+        border-style: solid;
+        text-align: center;
+        border-radius: 0% 0% 0% 0%;
+        padding: 10px; 
+        box-sizing: border-box; 
+        -webkit-text-stroke-width: 0px;
+        -webkit-text-stroke-color: rgba(255, 255, 255, 1);
+        text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%; 
+      }
     </style>
   </head>
   <body>
     <div id="text">Loading location...</div>
+
     <script>
-      function wrappedEval(textExpression, contextData) {
-        try {
-          let fn = Function(`"use strict"; var data = this; return (${textExpression})`);
-          return fn.bind(contextData)();
-        } catch (e) {
-          console.error("Error inside wrappedEval:", e, "Expression:", textExpression, "Context:", contextData);
-          return "Eval Error"; // Return a specific string on error
+      document.addEventListener('DOMContentLoaded', function() {
+        function wrappedEval(textExpression, contextData) {
+          try {
+            let fn = Function(`"use strict"; var data = this; return (${textExpression})`);
+            return fn.bind(contextData)();
+          } catch (e) {
+            console.error("Error inside wrappedEval:", e.message, "Expression:", textExpression, "Context:", JSON.stringify(contextData,null,2));
+            return "Eval Error"; 
+          }
         }
-      }
 
-      const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
-      const urlParams = new URLSearchParams(window.location.search);
-      const pullKey = urlParams.get("key"); 
-      const specificFormat = "${ data.secondary_address && data.secondary_address.text ? data.secondary_address.text + ', ' : '' }${ data.address && data.address.text ? data.address.text + ', ' : '' }${ data.neighborhood && data.neighborhood.text ? data.neighborhood.text + ', ' : '' }${ data.locality && data.locality.text ? data.locality.text + ', ' : '' }${ data.place && data.place.text ? data.place.text : '' }";
-      const specificLang = "en";
-      const featureTypesForAPI = ["address", "secondary_address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
-      const featureTypesForAPIString = featureTypesForAPI.join(',');
-      const featureParamsToExtract = ["secondary_address", "address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
-      let lastGeocodeTime = 0;
-      const geocodeInterval = 1500; 
-      const textElement = document.getElementById("text");
+        const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
+        const urlParams = new URLSearchParams(window.location.search);
+        const pullKey = urlParams.get("key"); 
+        const specificFormat = "${ data.secondary_address && data.secondary_address.text ? data.secondary_address.text + ', ' : '' }${ data.address && data.address.text ? data.address.text + ', ' : '' }${ data.neighborhood && data.neighborhood.text ? data.neighborhood.text + ', ' : '' }${ data.locality && data.locality.text ? data.locality.text + ', ' : '' }${ data.place && data.place.text ? data.place.text : '' }";
+        const specificLang = "en";
+        const featureTypesForAPI = ["address", "secondary_address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
+        const featureTypesForAPIString = featureTypesForAPI.join(',');
+        const featureParamsToExtract = ["secondary_address", "address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
+        let lastGeocodeTime = 0;
+        const geocodeInterval = 1500; 
+        const textElement = document.getElementById("text");
 
-      console.log("Script loaded. Pull key from URL:", pullKey);
+        console.log("Script loaded. Pull key from URL:", pullKey);
 
-      if (!pullKey) {
-        textElement.innerText = "Error: Key missing from URL.";
-        console.error("Pull key is missing from URL parameters.");
-      } else {
-        console.log("Attempting to set up RealtimeIRL listener for key:", pullKey);
-        if (typeof RealtimeIRL !== 'undefined') {
-          RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-            console.log("--- Location listener fired --- Location object:", JSON.stringify(location, null, 2)); 
-            const currentTime = new Date().getTime();
-            if (currentTime - lastGeocodeTime > geocodeInterval) {
-              lastGeocodeTime = currentTime; 
-              const lon = location.longitude;
-              const lat = location.latitude;
-              if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
-                  console.error("Invalid location data received:", location);
-                  if (textElement) textElement.innerText = "Invalid GPS Data";
-                  return;
-              }
-              const apiUrl = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lon}&latitude=${lat}&types=${featureTypesForAPIString}&language=${specificLang}&access_token=${MAPBOX_ACCESS_TOKEN}`;
-              console.log("Requesting Mapbox URL:", apiUrl);
-
-              fetch(apiUrl)
-                  .then(async response => { 
-                      const responseText = await response.text(); 
-                      console.log("Mapbox API - Status:", response.status, "Raw Response Text:", responseText); 
-                      if (!response.ok) {
-                          let errorMsg = `HTTP error ${response.status}: `;
-                          try { const errorData = JSON.parse(responseText); errorMsg += (errorData.message || responseText.substring(0,200)); }
-                          catch (e) { errorMsg += responseText.substring(0,200); }
-                          throw new Error(errorMsg); 
-                      }
-                      try { const jsonData = JSON.parse(responseText); return jsonData; }
-                      catch (e) {
-                          console.error("Mapbox API Response (2xx) - FAILED TO PARSE TEXT AS JSON. Error:", e.message);
-                          throw new Error(`Received 2xx status, but response text was not valid JSON. Preview: ${responseText.substring(0,200)}`);
-                      }
-                  })
-                  .then(data => { 
-                      console.log("Data successfully parsed, processing context..."); // Log before context processing
-                      var context = {};
-                      if (data && data.features) {
-                          for (const param of featureParamsToExtract) {
-                              const foundFeature = data.features.find(
-                                  (feature) => feature.properties && feature.properties.feature_type === param
-                              );
-                              if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
-                                  context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
-                              }
-                          }
-                          if (data.features.length > 0 && data.features[0].properties && data.features[0].properties.context) {
-                              const mainFeatureContext = data.features[0].properties.context;
-                              for (const param of featureParamsToExtract) {
-                                  if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
-                                      context[param] = { text: mainFeatureContext[param].name, ...mainFeatureContext[param] };
-                                  }
-                              }
-                          }
-                      }
-                      console.log("Populated Context:", JSON.stringify(context, null, 2)); // Log the populated context
-
-                      console.log("Calling wrappedEval...");
-                      var result = wrappedEval(specificFormat, context);
-                      console.log("Raw Result from wrappedEval:", result);
-
-                      let cleanedResult = result.trim();
-                      cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
-                      cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
-                      console.log("Cleaned Result:", cleanedResult);
-
-                      if (cleanedResult && cleanedResult !== "Eval Error" && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
-                        textElement.innerText = cleanedResult;
-                      } else {
-                        textElement.innerText = "Location details not found";
-                      }
-                  })
-                  .catch(error => {
-                      console.error("Final CATCH block error:", error, "Message:", error.message); // Log the full error object too
-                      if (textElement) { 
-                          textElement.innerText = "Geocoding Process Error"; 
-                      }
-                  });
-            }
-          });
+        if (!pullKey) {
+          if (textElement) textElement.innerText = "Error: Key missing from URL.";
+          console.error("Pull key is missing from URL parameters.");
         } else {
-          console.error("CRITICAL ERROR: RealtimeIRL object is not defined.");
-          if (textElement) textElement.innerText = "Error: RealtimeIRL library failed to load.";
-        }
-      });
+          console.log("Attempting to set up RealtimeIRL listener for key:", pullKey);
+          if (typeof RealtimeIRL !== 'undefined') {
+            RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
+              console.log("--- Location listener fired --- Location object:", JSON.stringify(location, null, 2)); 
+              const currentTime = new Date().getTime();
+              if (currentTime - lastGeocodeTime > geocodeInterval) {
+                lastGeocodeTime = currentTime; 
+                const lon = location.longitude;
+                const lat = location.latitude;
+                if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                    console.error("Invalid location data received:", location);
+                    if (textElement) textElement.innerText = "Invalid GPS Data";
+                    return;
+                }
+                const apiUrl = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lon}&latitude=${lat}&types=${featureTypesForAPIString}&language=${specificLang}&access_token=${MAPBOX_ACCESS_TOKEN}`;
+                console.log("Requesting Mapbox URL:", apiUrl);
+
+                fetch(apiUrl)
+                    .then(async response => { 
+                        const responseText = await response.text(); 
+                        console.log("Mapbox API - Status:", response.status, "Raw Response Text:", responseText); 
+                        if (!response.ok) {
+                            let errorMsg = `HTTP error ${response.status}: `;
+                            try { 
+                                const errorData = JSON.parse(responseText); 
+                                errorMsg += (errorData.message || responseText.substring(0,200)); 
+                            } catch (e) { 
+                                errorMsg += responseText.substring(0,200); 
+                            }
+                            throw new Error(errorMsg); 
+                        }
+                        try { 
+                            const jsonData = JSON.parse(responseText); 
+                            return jsonData; 
+                        } catch (e) {
+                            console.error("Mapbox API Response (2xx) - FAILED TO PARSE TEXT AS JSON. Error:", e.message);
+                            throw new Error(`Received 2xx status, but response text was not valid JSON. Preview: ${responseText.substring(0,200)}`);
+                        }
+                    })
+                    .then(data => { 
+                        console.log("Data successfully parsed, processing context..."); 
+                        var context = {};
+                        if (data && data.features) {
+                            for (const param of featureParamsToExtract) {
+                                const foundFeature = data.features.find(
+                                    (feature) => feature.properties && feature.properties.feature_type === param
+                                );
+                                if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
+                                    context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
+                                }
+                            }
+                            if (data.features.length > 0 && data.features[0].properties && data.features[0].properties.context) {
+                                const mainFeatureContext = data.features[0].properties.context;
+                                for (const param of featureParamsToExtract) {
+                                    if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
+                                        context[param] = { text: mainFeatureContext[param].name, ...mainFeatureContext[param] };
+                                    }
+                                }
+                            }
+                        }
+                        console.log("Populated Context:", JSON.stringify(context, null, 2));
+
+                        console.log("Calling wrappedEval...");
+                        var result = wrappedEval(specificFormat, context);
+                        console.log("Raw Result from wrappedEval:", result);
+
+                        let cleanedResult = String(result).trim(); // Ensure result is a string before trim
+                        cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
+                        cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
+                        console.log("Cleaned Result:", cleanedResult);
+
+                        if (cleanedResult && cleanedResult !== "Eval Error" && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
+                          textElement.innerText = cleanedResult;
+                        } else {
+                          textElement.innerText = "Location details not found";
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Final CATCH block error:", error); // Log the full error object
+                        if (textElement) { 
+                            textElement.innerText = "Geocoding Process Error"; 
+                        }
+                    });
+              } // end geocodeInterval check
+            }); // end addLocationListener
+          } else { // RealtimeIRL undefined
+            console.error("CRITICAL ERROR: RealtimeIRL object is not defined. The RealtimeIRL API script likely failed to load or was blocked.");
+            if (textElement) textElement.innerText = "Error: RealtimeIRL library failed to load.";
+          }
+        } // end pullKey check
+      }); // end DOMContentLoaded
     </script>
   </body>
 </html>
