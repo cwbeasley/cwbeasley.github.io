@@ -4,15 +4,58 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
-    <script defer src="./indicator.js"></script>
+    <script defer src="./indicator.js"></script> 
     <link
       href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
       rel="stylesheet"
     />
+
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+
+    <style>
+      body {
+        /* Ensure body is transparent and takes full space for overlay */
+        background-color: rgba(0, 0, 0, 0);
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden; /* Hide scrollbars */
+      }
+
+      #text {
+        /* Styles decoded from your original iframe's css= parameter */
+        color: rgba(223, 251, 38, 1);
+        font-size: 46px;
+        font-family: 'Open Sans', sans-serif; /* Fallback font added */
+        font-weight: normal;
+        font-style: normal;
+        transform: rotate(0deg); /* Explicitly set to 0 rotation */
+        background-color: rgba(0, 0, 0, 0); /* Transparent background */
+        border-color: rgba(223, 251, 38, 1);
+        border-width: 0px;
+        border-style: solid;
+        text-align: center;
+        border-radius: 0% 0% 0% 0%; /* Explicitly set to 0 radius */
+        padding: 0px;
+        -webkit-text-stroke-width: 0px;
+        -webkit-text-stroke-color: rgba(255, 255, 255, 1);
+        text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
+
+        /* Make sure the text div fills the width for centering */
+        width: 100%;
+        /* If you want to position this text box precisely on your stream: */
+        /* position: absolute; */
+        /* top: 10px; */
+        /* left: 10px; */
+      }
+    </style>
   </head>
   <body>
-    <div id="text"></div>
+    <div id="text">Loading location...</div>
+
     <script>
+      // Function to evaluate the dynamic text format string
       function wrappedEval(textExpression, contextData) {
         let fn = Function(
           `"use strict"; var data = this;return (${textExpression})`
@@ -21,17 +64,22 @@
       }
 
       var mapboxClient = mapboxSdk({
-        accessToken:          "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w",
+        // Your Mapbox Access Token (UPDATED HERE)
+        accessToken: "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w",
       });
 
       var params = new URLSearchParams(window.location.search);
       var pullKey = new URLSearchParams(window.location.search).get("key");
-      var format =        new URLSearchParams(window.location.search).get("format") ||        "${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.place?.text}";
-      
-      // --- START OF REFRESH LOGIC ---
-      let lastGeocodeTime = 0;
-      const geocodeInterval = 3000; // 3000 milliseconds = 3 seconds
+      // The format string for the text (decoded from your original format= parameter)
+      var format =
+        new URLSearchParams(window.location.search).get("format") ||
+        "${data.address ? data.address.text + ', ' : ''}${data.place ? data.place.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text : ''}";
 
+      // --- 5-SECOND REFRESH LOGIC ---
+      let lastGeocodeTime = 0;
+      const geocodeInterval = 5000; // 5000 milliseconds = 5 seconds
+
+      // This function will be called every time a new location update is received
       RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
         const currentTime = new Date().getTime();
         
@@ -47,6 +95,7 @@
             .send()
             .then((response) => {
               var context = {};
+              // Populate context with various place types from Mapbox response
               for (var param of [
                 "country",
                 "region",
@@ -62,17 +111,24 @@
                   feature.place_type.includes(param)
                 );
               }
+              // Evaluate the format string with the gathered context data
               var result = wrappedEval(
                 "`" + format + "`",
                 context
               );
+              // Update the text div if the result is not 'undefined' (meaning data was found)
               if (!result.includes("undefined")) {
                 document.getElementById("text").innerText = result;
+               } else {
+                document.getElementById("text").innerText = "Location not found..."; // Handle no result
                }
+            })
+            .catch(error => {
+                console.error("Mapbox geocoding error:", error);
+                document.getElementById("text").innerText = "Geocoding error..."; // Handle API errors
             });
         }
       });
-      // --- END OF REFRESH LOGIC ---
     </script>
   </body>
 </html>
