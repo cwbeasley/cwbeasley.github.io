@@ -58,7 +58,7 @@
       // The line 'var params = new URLSearchParams(window.location.search);' is no longer needed if not used elsewhere.
 
       let lastGeocodeTime = 0;
-      const geocodeInterval = 5000; 
+      const geocodeInterval = 1500; 
 
       RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
         const currentTime = new Date().getTime();
