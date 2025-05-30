@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display v6</title>
+    <title>Neighborhood Display v6 - Debug</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
@@ -28,8 +28,8 @@
         border-style: solid;
         text-align: center;
         border-radius: 0% 0% 0% 0%;
-        padding: 10px; /* Added a little padding for breathing room */
-        box-sizing: border-box; /* Ensure padding doesn't make it overflow */
+        padding: 10px; 
+        box-sizing: border-box; 
         -webkit-text-stroke-width: 0px;
         -webkit-text-stroke-color: rgba(255, 255, 255, 1);
         text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
@@ -46,39 +46,29 @@
 
     <script>
       function wrappedEval(textExpression, contextData) {
-        // Ensure data is available for evaluation
         let fn = Function(
           `"use strict"; 
            var data = this; 
-           // Helper to safely access properties like data.address.text
-           function safeGet(obj, path) {
-             return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-           }
            return (${textExpression})`
         );
         return fn.bind(contextData)();
       }
 
-      // Your Mapbox Access Token (pk token)
       const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
 
       const urlParams = new URLSearchParams(window.location.search);
       const pullKey = urlParams.get("key"); 
 
-      // Format string for displaying location details
       const specificFormat = "${ data.secondary_address && data.secondary_address.text ? data.secondary_address.text + ', ' : '' }${ data.address && data.address.text ? data.address.text + ', ' : '' }${ data.neighborhood && data.neighborhood.text ? data.neighborhood.text + ', ' : '' }${ data.locality && data.locality.text ? data.locality.text + ', ' : '' }${ data.place && data.place.text ? data.place.text : '' }";
       const specificLang = "en";
       
-      // Feature types to request from the API and then extract
       const featureTypesForAPI = ["address", "secondary_address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
       const featureTypesForAPIString = featureTypesForAPI.join(',');
       
-      // Feature types we want to populate in our context object for the format string
       const featureParamsToExtract = [
           "secondary_address", "address", "neighborhood", "locality", "place", 
           "district", "region", "postcode", "country"
       ];
-
 
       let lastGeocodeTime = 0;
       const geocodeInterval = 1500; 
@@ -98,22 +88,34 @@
             const lat = location.latitude;
 
             const apiUrl = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lon}&latitude=${lat}&types=${featureTypesForAPIString}&language=${specificLang}&access_token=${MAPBOX_ACCESS_TOKEN}`;
+            
+            // For debugging the exact URL being called:
+            // console.log("Requesting URL:", apiUrl);
 
             fetch(apiUrl)
               .then(response => {
                 if (!response.ok) {
-                  return response.json().then(errorData => {
-                    throw new Error(`HTTP error ${response.status}: ${errorData.message || response.statusText}`);
-                  }).catch(() => {
-                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                  // If the response is not OK, get it as text first to see the content
+                  return response.text().then(text => {
+                    // Log status and raw text for debugging
+                    console.error("Mapbox API Error - Status:", response.status, "Response Text:", text); 
+                    let errorMsg = `HTTP error ${response.status}: `;
+                    try {
+                      // Attempt to parse the text as JSON in case Mapbox still sent a JSON error message
+                      const errorData = JSON.parse(text); 
+                      errorMsg += (errorData.message || text); // Use JSON message if available, else raw text
+                    } catch (e) {
+                      errorMsg += text; // If parsing text as JSON fails, use the raw text
+                    }
+                    throw new Error(errorMsg);
                   });
                 }
-                return response.json();
+                return response.json(); // If response.ok, parse as JSON
               })
-              .then(data => {
-                var context = {};
-                // console.log("Mapbox API v6 Response:", JSON.stringify(data, null, 2)); // For debugging
+              .then(data => { 
+                // console.log("Mapbox API v6 Success Response:", JSON.stringify(data, null, 2)); // For debugging success data
 
+                var context = {};
                 if (data && data.features) {
                     // First pass: find exact feature_type matches from the top-level features
                     for (const param of featureParamsToExtract) {
@@ -121,12 +123,14 @@
                             (feature) => feature.properties && feature.properties.feature_type === param
                         );
                         if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
+                            // For v6, use properties.name as the primary text
                             context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
                         }
                     }
 
                     // Second pass: if some context parts are still missing,
                     // try to populate them from the `context` object of the most specific feature found (usually features[0])
+                    // Mapbox v6 often provides a rich context object within the first feature.
                     if (data.features.length > 0 && data.features[0].properties && data.features[0].properties.context) {
                         const mainFeatureContext = data.features[0].properties.context;
                         for (const param of featureParamsToExtract) {
@@ -136,21 +140,15 @@
                         }
                     }
                 }
-                // console.log("Populated Context:", context); // For debugging
-                
-                // Refined specificFormat for safety within wrappedEval, checking existence of data.X.text
-                // The original specificFormat already does this with ternary, which is good.
-                // We ensure 'text' property is set in context items above.
-                var result = wrappedEval(specificFormat, context);
-                // console.log("Raw Result from wrappedEval:", result); // For debugging
+                // console.log("Populated Context (Fetch):", context);
 
+                var result = wrappedEval(specificFormat, context);
+                // console.log("Raw Result from wrappedEval:", result);
 
                 let cleanedResult = result.trim();
-                // More robust cleaning of multiple/leading/trailing commas
-                cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); // Remove leading/trailing commas and spaces
-                cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    // Replace multiple commas with a single one
-                // console.log("Cleaned Result:", cleanedResult); // For debugging
-
+                cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
+                cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
+                // console.log("Cleaned Result:", cleanedResult);
 
                 if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
                   textElement.innerText = cleanedResult;
@@ -159,8 +157,8 @@
                  }
               })
               .catch(error => {
-                  console.error("Mapbox Geocoding v6 (Fetch) error:", error.message);
-                  textElement.innerText = "Geocoding API Error";
+                  console.error("Mapbox Geocoding v6 (Fetch) CATCH block error:", error.message); // More specific console log
+                  textElement.innerText = "Geocoding API Error"; // User-facing message
               });
           }
         });
