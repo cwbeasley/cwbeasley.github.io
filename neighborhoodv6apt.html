@@ -2,8 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display - Hardcoded Key</title>
-    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+    <title>Neighborhood Display - API URL Fix</title> <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
     <style>
@@ -46,10 +45,7 @@
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
-        
-        // Hardcoded pullKey
-        const pullKey = "hnr2f1qtnecsp5bn"; 
-        
+        const pullKey = "hnr2f1qtnecsp5bn"; // Hardcoded key
         const specificLang = "en";
         
         // Define feature types to request from the API.
@@ -63,13 +59,12 @@
         const geocodeInterval = 1500; 
         const textElement = document.getElementById("text");
 
-        console.log("Script loaded. Using hardcoded pull key:", pullKey); // Log 1
+        console.log("Script loaded. Using hardcoded pull key:", pullKey);
 
-        // No need to check for pullKey from URL params anymore
-        console.log("Attempting to set up RealtimeIRL listener for key:", pullKey); // Log 2 (was Log 3)
+        console.log("Attempting to set up RealtimeIRL listener for key:", pullKey);
         if (typeof RealtimeIRL !== 'undefined') {
           RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-            console.log("--- Location listener fired --- Location object (raw):", JSON.stringify(location)); // Log 3 (was Log 4)
+            console.log("--- Location listener fired --- Location object (raw):", JSON.stringify(location)); 
             const currentTime = new Date().getTime();
             if (currentTime - lastGeocodeTime > geocodeInterval) {
               lastGeocodeTime = currentTime; 
@@ -77,12 +72,20 @@
               const lat = location.latitude;
 
               if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
-                  console.error("Invalid location data received:", location); // Log 4 (was Log 5)
+                  console.error("Invalid location data received:", location); 
                   if (textElement) textElement.innerText = "Invalid GPS Data";
                   return;
               }
-              const apiUrl = \`https://api.mapbox.com/search/geocode/v6/reverse?longitude=\${lon}&latitude=\${lat}&types=\${featureTypesForAPIString}&language=\${specificLang}&access_token=\${MAPBOX_ACCESS_TOKEN}\`;
-              console.log("Requesting Mapbox URL:", apiUrl); // Log 5 (was Log 6)
+
+              // Construct apiUrl using traditional string concatenation
+              const apiUrl = "https://api.mapbox.com/search/geocode/v6/reverse" +
+                             "?longitude=" + encodeURIComponent(lon) +
+                             "&latitude=" + encodeURIComponent(lat) +
+                             "&types=" + encodeURIComponent(featureTypesForAPIString) +
+                             "&language=" + encodeURIComponent(specificLang) +
+                             "&access_token=" + encodeURIComponent(MAPBOX_ACCESS_TOKEN);
+              
+              console.log("Requesting Mapbox URL:", apiUrl);
 
               fetch(apiUrl)
                   .then(response => { 
@@ -93,10 +96,10 @@
                       });
                   })
                   .then(({ ok, status, text }) => { 
-                      console.log("Mapbox API - Status:", status, "Raw Response Text:", text); // Log 6 (was Log 7)
+                      console.log("Mapbox API - Status:", status, "Raw Response Text:", text); 
 
                       if (!ok) {
-                          let errorMsg = \`HTTP error \${status}: \`;
+                          let errorMsg = \`HTTP error \${status}: \`; // Backticks for template literal
                           try { 
                               const errorData = JSON.parse(text); 
                               errorMsg += (errorData.message || text.substring(0,200)); 
@@ -109,12 +112,12 @@
                           const jsonData = JSON.parse(text); 
                           return jsonData; 
                       } catch (e) {
-                          console.error("Mapbox API Response (2xx) - FAILED TO PARSE TEXT AS JSON. Error:", e.message); // Log 7 (was Log 8)
-                          throw new Error(\`Received 2xx status, but response text was not valid JSON. Preview: \${text.substring(0,200)}\`);
+                          console.error("Mapbox API Response (2xx) - FAILED TO PARSE TEXT AS JSON. Error:", e.message); 
+                          throw new Error(\`Received 2xx status, but response text was not valid JSON. Preview: \${text.substring(0,200)}\`); // Backticks
                       }
                   })
                   .then(dataFromMapbox => { 
-                      console.log("Data successfully parsed, processing context..."); // Log 8 (was Log 9)
+                      console.log("Data successfully parsed, processing context..."); 
                       var context = {};
                       if (dataFromMapbox && dataFromMapbox.features) {
                           for (const param of featureParamsToExtract) {
@@ -134,9 +137,8 @@
                               }
                           }
                       }
-                      console.log("Populated Context for formatting:", JSON.stringify(context, null, 2)); // Log 9 (was Log 10)
-
-                      // Direct string construction
+                      console.log("Populated Context for formatting:", JSON.stringify(context, null, 2)); 
+                      
                       let resultParts = [];
                       if (context.address && context.address.text) { resultParts.push(context.address.text); }
                       if (context.neighborhood && context.neighborhood.text) { resultParts.push(context.neighborhood.text); }
@@ -144,12 +146,12 @@
                       if (context.place && context.place.text) { resultParts.push(context.place.text); }
                       
                       let result = resultParts.join(', ');
-                      console.log("Constructed Result String:", result); // Log 10 (was Log 11)
+                      console.log("Constructed Result String:", result); 
 
                       let cleanedResult = String(result).trim(); 
                       cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
                       cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
-                      console.log("Cleaned Result:", cleanedResult); // Log 11 (was Log 12)
+                      console.log("Cleaned Result:", cleanedResult); 
 
                       if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
                         textElement.innerText = cleanedResult;
@@ -158,7 +160,7 @@
                       }
                   })
                   .catch(error => {
-                      console.error("Final CATCH block error:", error); // Log 12 (was Log 13)
+                      console.error("Final CATCH block error:", error); 
                       if (textElement) { 
                           textElement.innerText = "Geocoding Process Error"; 
                       }
@@ -166,7 +168,7 @@
             } 
           }); 
         } else { 
-          console.error("CRITICAL ERROR: RealtimeIRL object is not defined. The RealtimeIRL API script likely failed to load or was blocked."); // Log 13 (was Log 14)
+          console.error("CRITICAL ERROR: RealtimeIRL object is not defined. The RealtimeIRL API script likely failed to load or was blocked."); 
           if (textElement) textElement.innerText = "Error: RealtimeIRL library failed to load.";
         }
       }); 
