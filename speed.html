@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Speed Limit Overlay</title>
+    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: rgba(0,0,0,0); /* Transparent for overlays */
+            display: flex;
+            justify-content: center; /* Centers the sign horizontally */
+            align-items: center; /* Centers the sign vertically */
+            height: 100vh; /* Full viewport height */
+            overflow: hidden; /* Prevents scrollbars if sign is larger than viewport */
+        }
+
+        #speed_sign_container {
+            width: 200px; /* Initial width, adjust as needed */
+            height: 267px; /* Initial height, adjust to maintain aspect ratio & desired size */
+            background-image: url("https://cwbeasley.github.io/speedsign.jpg");
+            background-size: contain; /* Ensures the whole sign is visible and maintains aspect ratio */
+            background-repeat: no-repeat;
+            background-position: center;
+            position: relative; /* For absolute positioning of the text overlay */
+            /* border: 1px dashed red; */ /* Uncomment to see the container bounds during positioning */
+        }
+
+        #speed_text_overlay {
+            /* Text styles from your original CSS parameters */
+            color: rgba(223, 251, 38, 1);
+            font-family: 'Open Sans', sans-serif;
+            font-weight: bold;
+            font-style: normal;
+            text-align: center; /* Horizontally centers the speed number within this div */
+            padding: 0px;
+            -webkit-text-stroke-width: 0px;
+            -webkit-text-stroke-color: rgba(255, 255, 255, 1);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* A slightly visible shadow */
+            
+            /* Positioning and Sizing - VERY LIKELY NEEDS ADJUSTMENT */
+            position: absolute;
+            font-size: 60px;  /* Adjust this to fit the number well within the sign's circle */
+            width: 70%;       /* Adjust width of the text's bounding box (percentage of parent) */
+            left: 50%;        /* Center the text's bounding box horizontally */
+            top: 49%;         /* Adjust vertical position (percentage from the top) */
+                              /* This value (49%) is a guess to center in the white circle */
+            transform: translate(-50%, -50%); /* Fine-tunes centering */
+            line-height: 1;   /* Helps in vertical centering if font has unusual line height */
+            /* background-color: rgba(255,0,0,0.2); */ /* Uncomment to see text overlay bounds */
+        }
+    </style>
+</head>
+<body>
+    <div id="speed_sign_container">
+        <div id="speed_text_overlay">0</div> </div>
+
+    <script>
+        const speedTextElement = document.getElementById("speed_text_overlay");
+        const urlParams = new URLSearchParams(window.location.search);
+        const pullKey = urlParams.get("key");
+
+        const MPS_TO_MPH = 2.23694; // Conversion factor from meters/second to MPH
+        let lastDisplayedSpeed = null;
+
+        if (!pullKey) {
+            speedTextElement.innerText = "ERR"; // Or some other error indication
+            console.error("RealtimeIRL pullKey is missing from URL parameters.");
+        } else {
+            RealtimeIRL.forPullKey(pullKey).addSpeedListener(function(speed_mps) {
+                // Convert speed to MPH and round it to the nearest whole number
+                const speed_mph = Math.round(speed_mps * MPS_TO_MPH);
+
+                // Only update if the speed has changed
+                if (speed_mph !== lastDisplayedSpeed) {
+                    speedTextElement.innerText = speed_mph;
+                    lastDisplayedSpeed = speed_mph;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
