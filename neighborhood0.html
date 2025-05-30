@@ -55,17 +55,16 @@
       var specificFormat = "${data.poi ? data.poi.text + ', ' : ''}${data.address ? data.address.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.district ? data.district.text + ', ' : ''}${data.place ? data.place.text : ''}";
       var specificLang = "en";
 
-      // The line 'var params = new URLSearchParams(window.location.search);' is no longer needed if not used elsewhere.
-
       let lastGeocodeTime = 0;
-      const geocodeInterval = 1500; 
+      const geocodeInterval = 1500; // User's current interval
 
       RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
         const currentTime = new Date().getTime();
         
         if (currentTime - lastGeocodeTime > geocodeInterval) {
           lastGeocodeTime = currentTime; 
-          document.getElementById("text").innerText = "Refreshing...";
+          // "Refreshing..." message removed for smoother updates.
+          // The #text div will continue to display its current content while fetching.
 
           mapboxClient.geocoding
             .reverseGeocode({
@@ -87,15 +86,16 @@
                 "`" + specificFormat + "`", // Using the hardcoded format
                 context
               );
-              if (!result.includes("undefined") && result.trim() !== ', , , ,') { // Added trim and check for empty commas
-                document.getElementById("text").innerText = result.replace(/,\s*$/, "").replace(/,\s*,/g, ','); // Clean up trailing/multiple commas
+              if (!result.includes("undefined") && result.trim() !== ', , , ,') { 
+                document.getElementById("text").innerText = result.replace(/,\s*$/, "").replace(/,\s*,/g, ','); // User's current cleaning logic
                } else {
                 document.getElementById("text").innerText = "Location not found...";
                }
             })
             .catch(error => {
                 console.error("Mapbox geocoding error:", error);
-                document.getElementById("text").innerText = "Geocoding error...";
+                // On error, do NOT change the text.
+                // The #text div will continue to show the last successful value.
             });
         }
       });
