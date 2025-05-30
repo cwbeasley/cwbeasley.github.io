@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display v6 - Debug</title>
+    <title>Neighborhood Display v6 - Debug v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
@@ -89,48 +89,53 @@
 
             const apiUrl = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lon}&latitude=${lat}&types=${featureTypesForAPIString}&language=${specificLang}&access_token=${MAPBOX_ACCESS_TOKEN}`;
             
-            // For debugging the exact URL being called:
             // console.log("Requesting URL:", apiUrl);
 
             fetch(apiUrl)
               .then(response => {
                 if (!response.ok) {
-                  // If the response is not OK, get it as text first to see the content
-                  return response.text().then(text => {
-                    // Log status and raw text for debugging
-                    console.error("Mapbox API Error - Status:", response.status, "Response Text:", text); 
+                  // Handle HTTP errors (4xx, 5xx)
+                  return response.text().then(text => { // Get text of the error
+                    console.error("Mapbox API HTTP Error - Status:", response.status, "Response Text:", text);
                     let errorMsg = `HTTP error ${response.status}: `;
                     try {
-                      // Attempt to parse the text as JSON in case Mapbox still sent a JSON error message
-                      const errorData = JSON.parse(text); 
-                      errorMsg += (errorData.message || text); // Use JSON message if available, else raw text
+                      const errorData = JSON.parse(text);
+                      errorMsg += (errorData.message || text);
                     } catch (e) {
-                      errorMsg += text; // If parsing text as JSON fails, use the raw text
+                      errorMsg += text;
                     }
-                    throw new Error(errorMsg);
+                    throw new Error(errorMsg); 
                   });
                 }
-                return response.json(); // If response.ok, parse as JSON
+
+                // If response.ok is true, try to parse as JSON
+                // but get text first to debug if JSON parsing fails
+                return response.text().then(text => {
+                    try {
+                        const jsonData = JSON.parse(text);
+                        // console.log("Mapbox API v6 Success Response (parsed from text):", JSON.stringify(jsonData, null, 2)); // For debugging
+                        return jsonData; // Successfully parsed JSON
+                    } catch (e) {
+                        // This block executes if response.ok was true, but the text wasn't valid JSON
+                        console.error("Mapbox API Response (2xx) - FAILED TO PARSE AS JSON. Error:", e.message);
+                        console.error("Mapbox API Response (2xx) - Raw Text which failed parsing:", text); 
+                        throw new Error(`Received 2xx status, but response was not valid JSON. Preview: ${text.substring(0, 200)}`);
+                    }
+                });
               })
               .then(data => { 
-                // console.log("Mapbox API v6 Success Response:", JSON.stringify(data, null, 2)); // For debugging success data
-
                 var context = {};
+                // console.log("Mapbox API v6 Data for Context Processing:", JSON.stringify(data, null, 2));
+
                 if (data && data.features) {
-                    // First pass: find exact feature_type matches from the top-level features
                     for (const param of featureParamsToExtract) {
                         const foundFeature = data.features.find(
                             (feature) => feature.properties && feature.properties.feature_type === param
                         );
                         if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
-                            // For v6, use properties.name as the primary text
                             context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
                         }
                     }
-
-                    // Second pass: if some context parts are still missing,
-                    // try to populate them from the `context` object of the most specific feature found (usually features[0])
-                    // Mapbox v6 often provides a rich context object within the first feature.
                     if (data.features.length > 0 && data.features[0].properties && data.features[0].properties.context) {
                         const mainFeatureContext = data.features[0].properties.context;
                         for (const param of featureParamsToExtract) {
@@ -157,8 +162,8 @@
                  }
               })
               .catch(error => {
-                  console.error("Mapbox Geocoding v6 (Fetch) CATCH block error:", error.message); // More specific console log
-                  textElement.innerText = "Geocoding API Error"; // User-facing message
+                  console.error("Final CATCH block error (Mapbox Geocoding or JSON parsing):", error.message);
+                  textElement.innerText = "Geocoding Process Error"; 
               });
           }
         });
