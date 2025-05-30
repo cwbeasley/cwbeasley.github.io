@@ -82,7 +82,7 @@
                 const cardinalDirection = activeCompassDirections[cardinalIndex];
                 const numericalDegree = Math.floor(numericHeading);
 
-                const newText = `${cardinalDirection} ${numericalDegree}\u00B0`;
+                const newText = `${cardinalDirection}   ${numericalDegree}\u00B0`;
 
                 // Only update the DOM if the text has actually changed
                 if (newText !== lastDisplayedText) {
