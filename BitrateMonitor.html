@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OBS Bitrate Overlay</title>
+    <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.3/dist/obs-websocket.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: rgba(0, 0, 0, 0.0); /* Transparent background */
+            color: #ffffff; /* White text */
+            text-shadow: 1px 1px 2px #000000; /* Basic text shadow for readability */
+            margin: 10px;
+            padding: 0;
+            font-size: 20px; /* Base font size, can be adjusted */
+            overflow: hidden; /* Ensure no scrollbars */
+        }
+        #statsContainer {
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent dark background for the box */
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block; /* Shrink to content */
+        }
+        .stat-item {
+            margin-bottom: 5px;
+        }
+        .label {
+            font-weight: bold;
+        }
+        #status {
+            font-style: italic;
+            font-size: 0.8em;
+            margin-top: 10px;
+        }
+        .connected { color: lightgreen; }
+        .disconnected { color: orange; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div id="statsContainer">
+        <div class="stat-item"><span class="label">Bitrate:</span> <span id="bitrate">---</span> kbps</div>
+        <div class="stat-item"><span class="label">Dropped Frames:</span> <span id="droppedFrames">---</span> (<span id="droppedFramesPercent">---</span>%)</div>
+        <div class="stat-item"><span class="label">Stream Time:</span> <span id="streamTime">--:--:--</span></div>
+        </div>
+    <div id="status" class="disconnected">Connecting to OBS...</div>
+
+    <script>
+        const obs = new OBSWebSocket();
+        const bitrateElement = document.getElementById('bitrate');
+        const droppedFramesElement = document.getElementById('droppedFrames');
+        const droppedFramesPercentElement = document.getElementById('droppedFramesPercent');
+        const streamTimeElement = document.getElementById('streamTime');
+        const statusElement = document.getElementById('status');
+
+        const OBS_WEBSOCKET_URL = 'ws://localhost:4455'; // Default port for obs-websocket v5+
+        const RECONNECT_INTERVAL = 5000; // Try to reconnect every 5 seconds
+        const STATS_UPDATE_INTERVAL = 1000; // Update stats every 1 second
+
+        let statsIntervalId = null;
+
+        function formatStreamTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            return [hours, minutes, seconds]
+                .map(v => v < 10 ? "0" + v : v)
+                .join(":");
+        }
+
+        async function updateStats() {
+            if (!obs.identified) return; // Check if connection is identified
+
+            try {
+                const status = await obs.call('GetStreamStatus');
+                if (status.outputActive) {
+                    const currentBitrateKbps = (status.outputBytesPerSecond * 8 / 1024).toFixed(1);
+                    bitrateElement.textContent = currentBitrateKbps;
+                    
+                    const totalFrames = status.outputTotalFrames;
+                    const skippedFrames = status.outputSkippedFrames;
+                    droppedFramesElement.textContent = `${skippedFrames}/${totalFrames}`;
+                    
+                    const percentDropped = totalFrames > 0 ? (skippedFrames / totalFrames * 100).toFixed(1) : "0.0";
+                    droppedFramesPercentElement.textContent = percentDropped;
+
+                    streamTimeElement.textContent = formatStreamTime(status.outputDuration / 1000); // outputDuration is in ms
+                } else {
+                    bitrateElement.textContent = "OFFLINE";
+                    droppedFramesElement.textContent = "---";
+                    droppedFramesPercentElement.textContent = "---";
+                    streamTimeElement.textContent = "--:--:--";
+                }
+            } catch (error) {
+                console.error('Error getting stream status:', error);
+                // Optionally update UI to show stats error, or rely on connection status
+                bitrateElement.textContent = "Error";
+            }
+        }
+
+        async function connectToOBS() {
+            try {
+                statusElement.textContent = 'Connecting to OBS...';
+                statusElement.className = 'disconnected';
+                await obs.connect(OBS_WEBSOCKET_URL); 
+                // If you set a password in obs-websocket settings:
+                // await obs.connect(OBS_WEBSOCKET_URL, 'YOUR_PASSWORD_HERE');
+            } catch (error) {
+                console.error('Failed to connect to OBS WebSocket:', error);
+                statusElement.textContent = `Error connecting: ${error.message}. Retrying...`;
+                statusElement.className = 'error';
+                setTimeout(connectToOBS, RECONNECT_INTERVAL);
+            }
+        }
+
+        obs.on('ConnectionOpened', () => {
+            console.log('Connected to OBS WebSocket.');
+            statusElement.textContent = 'Connected to OBS!';
+            statusElement.className = 'connected';
+            // obs-websocket-js v5+ auto-identifies on connect if no auth is needed
+            // or after successful authentication.
+        });
+        
+        obs.on('ConnectionIdentified', () => {
+            console.log('OBS WebSocket identified.');
+            statusElement.textContent = 'OBS Identified!';
+            statusElement.className = 'connected';
+            if (statsIntervalId) clearInterval(statsIntervalId);
+            statsIntervalId = setInterval(updateStats, STATS_UPDATE_INTERVAL);
+            updateStats(); // Initial update
+        });
+
+        obs.on('ConnectionClosed', (data) => {
+            console.log('Disconnected from OBS WebSocket.', data);
+            statusElement.textContent = 'Disconnected. Trying to reconnect...';
+            statusElement.className = 'disconnected';
+            if (statsIntervalId) clearInterval(statsIntervalId);
+            bitrateElement.textContent = "---";
+            droppedFramesElement.textContent = "---";
+            droppedFramesPercentElement.textContent = "---";
+            streamTimeElement.textContent = "--:--:--";
+            setTimeout(connectToOBS, RECONNECT_INTERVAL);
+        });
+        
+        obs.on('ConnectionError', (err) => {
+            console.error('OBS WebSocket Connection Error:', err);
+            statusElement.textContent = 'Connection Error. Retrying...';
+            statusElement.className = 'error';
+            // Reconnect attempt is handled by ConnectionClosed typically
+        });
+
+        // Initial connection attempt
+        connectToOBS();
+    </script>
+</body>
+</html>
