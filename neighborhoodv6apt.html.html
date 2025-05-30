@@ -1,83 +1,12 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/1999/REC-html401-19991224/strict.dtd">
+<!DOCTYPE html>
 <html>
-<head>
-<META http-equiv=Content-Type content="text/html; charset=UTF-8">
-<title>Exported from Notepad++</title>
-<style type="text/css">
-span {
-	font-family: 'Courier New';
-	font-size: 10pt;
-	color: #000000;
-}
-.sc0 {
-	font-weight: bold;
-}
-.sc1 {
-	color: #0000FF;
-}
-.sc3 {
-	color: #FF0000;
-}
-.sc6 {
-	font-weight: bold;
-	color: #8000FF;
-}
-.sc8 {
-}
-.sc21 {
-	background: #A6CAF0;
-}
-.sc26 {
-}
-.sc40 {
-}
-.sc41 {
-	background: #F2F4FF;
-}
-.sc43 {
-	color: #008000;
-	background: #F2F4FF;
-}
-.sc45 {
-	color: #FF0000;
-	background: #F2F4FF;
-}
-.sc46 {
-	background: #F2F4FF;
-}
-.sc47 {
-	font-weight: bold;
-	font-style: italic;
-	color: #000080;
-	background: #F2F4FF;
-}
-.sc48 {
-	color: #808080;
-	background: #F2F4FF;
-}
-.sc49 {
-	color: #808080;
-	background: #F2F4FF;
-}
-.sc50 {
-	font-weight: bold;
-	background: #F2F4FF;
-}
-.sc53 {
-	color: #808080;
-	background: #F2F4FF;
-}
-</style>
-</head>
-<body>
-<div style="float: left; white-space: pre; line-height: 1; background: #FFFFFF; "><span class="sc21">&lt;!</span><span class="sc26">DOCTYPE html</span><span class="sc21">&gt;</span><span class="sc0">
-</span><span class="sc1">&lt;html&gt;</span><span class="sc0">
-  </span><span class="sc1">&lt;head&gt;</span><span class="sc0">
-    </span><span class="sc1">&lt;meta</span><span class="sc8"> </span><span class="sc3">charset</span><span class="sc8">=</span><span class="sc6">"UTF-8"</span><span class="sc1">&gt;</span><span class="sc0">
-    </span><span class="sc1">&lt;title&gt;</span><span class="sc0">Neighborhood Display - API URL Fix</span><span class="sc1">&lt;/title&gt;</span><span class="sc0"> </span><span class="sc1">&lt;script</span><span class="sc8"> </span><span class="sc3">src</span><span class="sc8">=</span><span class="sc6">"https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"</span><span class="sc1">&gt;&lt;/script&gt;</span><span class="sc0">
-    </span><span class="sc1">&lt;script</span><span class="sc8"> </span><span class="sc3">defer</span><span class="sc8"> </span><span class="sc3">src</span><span class="sc8">=</span><span class="sc6">"https://overlays.rtirl.com/indicator.js"</span><span class="sc1">&gt;&lt;/script&gt;</span><span class="sc0"> 
-    </span><span class="sc1">&lt;link</span><span class="sc8"> </span><span class="sc3">href</span><span class="sc8">=</span><span class="sc6">"https://fonts.googleapis.com/css2?family=Open+Sans&amp;display=swap"</span><span class="sc8"> </span><span class="sc3">rel</span><span class="sc8">=</span><span class="sc6">"stylesheet"</span><span class="sc1">&gt;</span><span class="sc0">
-    </span><span class="sc1">&lt;style&gt;</span><span class="sc0">
+  <head>
+    <meta charset="UTF-8">
+    <title>Neighborhood Display - Syntax Debug</title>
+    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+    <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+    <style>
       body {
         background-color: rgba(0, 0, 0, 0);
         margin: 0;
@@ -110,68 +39,66 @@ span {
         justify-content: center;
         height: 100%; 
       }
-    </span><span class="sc1">&lt;/style&gt;</span><span class="sc0">
-  </span><span class="sc1">&lt;/head&gt;</span><span class="sc0">
-  </span><span class="sc1">&lt;body&gt;</span><span class="sc0">
-    </span><span class="sc1">&lt;div</span><span class="sc8"> </span><span class="sc3">id</span><span class="sc8">=</span><span class="sc6">"text"</span><span class="sc1">&gt;</span><span class="sc0">Loading location...</span><span class="sc1">&lt;/div&gt;</span><span class="sc0">
-    </span><span class="sc1">&lt;script&gt;</span><span class="sc40">
-</span><span class="sc41">      </span><span class="sc46">document.addEventListener</span><span class="sc50">(</span><span class="sc49">'DOMContentLoaded'</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc47">function</span><span class="sc50">()</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41">
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">MAPBOX_ACCESS_TOKEN</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc48">"pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w"</span><span class="sc50">;</span><span class="sc41">
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">pullKey</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc48">"hnr2f1qtnecsp5bn"</span><span class="sc50">;</span><span class="sc41"> </span><span class="sc43">// Hardcoded key</span><span class="sc41">
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">specificLang</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc48">"en"</span><span class="sc50">;</span><span class="sc41">
+    </style>
+  </head>
+  <body>
+    <div id="text">Loading location...</div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiY3diZWFzbGV5IiwiYSI6ImNtYmE3cDhwcjAzNGQycnNhYWFwem0zNWsifQ.IpKDT3XxpNAbvwc8ovez3w";
+        const pullKey = "hnr2f1qtnecsp5bn"; 
+        const specificLang = "en";
         
-        </span><span class="sc43">// Define feature types to request from the API.</span><span class="sc41">
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">featureTypesForAPI</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc50">[</span><span class="sc48">"address"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"neighborhood"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"locality"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"place"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"district"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"region"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"postcode"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"country"</span><span class="sc50">];</span><span class="sc41">
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">featureTypesForAPIString</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc46">featureTypesForAPI.join</span><span class="sc50">(</span><span class="sc49">','</span><span class="sc50">);</span><span class="sc41">
+        const featureTypesForAPI = ["address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
+        const featureTypesForAPIString = featureTypesForAPI.join(',');
         
-        </span><span class="sc43">// Define feature types we want to try and extract for our display string.</span><span class="sc41">
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">featureParamsToExtract</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc50">[</span><span class="sc48">"address"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"neighborhood"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"locality"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"place"</span><span class="sc50">];</span><span class="sc41"> 
+        const featureParamsToExtract = ["address", "neighborhood", "locality", "place"]; 
                                       
-        </span><span class="sc47">let</span><span class="sc41"> </span><span class="sc46">lastGeocodeTime</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc45">0</span><span class="sc50">;</span><span class="sc41">
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">geocodeInterval</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc45">1500</span><span class="sc50">;</span><span class="sc41"> 
-        </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">textElement</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc46">document.getElementById</span><span class="sc50">(</span><span class="sc48">"text"</span><span class="sc50">);</span><span class="sc41">
+        let lastGeocodeTime = 0;
+        const geocodeInterval = 1500; 
+        const textElement = document.getElementById("text");
 
-        </span><span class="sc46">console.log</span><span class="sc50">(</span><span class="sc48">"Script loaded. Using hardcoded pull key:"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">pullKey</span><span class="sc50">);</span><span class="sc41">
+        console.log("Script loaded. Using hardcoded pull key:", pullKey);
 
-        </span><span class="sc46">console.log</span><span class="sc50">(</span><span class="sc48">"Attempting to set up RealtimeIRL listener for key:"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">pullKey</span><span class="sc50">);</span><span class="sc41">
-        </span><span class="sc47">if</span><span class="sc41"> </span><span class="sc50">(</span><span class="sc47">typeof</span><span class="sc41"> </span><span class="sc46">RealtimeIRL</span><span class="sc41"> </span><span class="sc50">!==</span><span class="sc41"> </span><span class="sc49">'undefined'</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41">
-          </span><span class="sc46">RealtimeIRL.forPullKey</span><span class="sc50">(</span><span class="sc46">pullKey</span><span class="sc50">).</span><span class="sc46">addLocationListener</span><span class="sc50">(</span><span class="sc47">function</span><span class="sc41"> </span><span class="sc50">(</span><span class="sc46">location</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41">
-            </span><span class="sc46">console.log</span><span class="sc50">(</span><span class="sc48">"--- Location listener fired --- Location object (raw):"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">JSON.stringify</span><span class="sc50">(</span><span class="sc46">location</span><span class="sc50">));</span><span class="sc41"> 
-            </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">currentTime</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc47">new</span><span class="sc41"> </span><span class="sc46">Date</span><span class="sc50">().</span><span class="sc46">getTime</span><span class="sc50">();</span><span class="sc41">
-            </span><span class="sc47">if</span><span class="sc41"> </span><span class="sc50">(</span><span class="sc46">currentTime</span><span class="sc41"> </span><span class="sc50">-</span><span class="sc41"> </span><span class="sc46">lastGeocodeTime</span><span class="sc41"> </span><span class="sc50">&gt;</span><span class="sc41"> </span><span class="sc46">geocodeInterval</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41">
-              </span><span class="sc46">lastGeocodeTime</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc46">currentTime</span><span class="sc50">;</span><span class="sc41"> 
-              </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">lon</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc46">location.longitude</span><span class="sc50">;</span><span class="sc41">
-              </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">lat</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc46">location.latitude</span><span class="sc50">;</span><span class="sc41">
+        console.log("Attempting to set up RealtimeIRL listener for key:", pullKey);
+        if (typeof RealtimeIRL !== 'undefined') {
+          RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
+            console.log("--- Location listener fired --- Location object (raw):", JSON.stringify(location)); 
+            const currentTime = new Date().getTime();
+            if (currentTime - lastGeocodeTime > geocodeInterval) {
+              lastGeocodeTime = currentTime; 
+              const lon = location.longitude;
+              const lat = location.latitude;
 
-              </span><span class="sc47">if</span><span class="sc41"> </span><span class="sc50">(</span><span class="sc47">typeof</span><span class="sc41"> </span><span class="sc46">lat</span><span class="sc41"> </span><span class="sc50">!==</span><span class="sc41"> </span><span class="sc49">'number'</span><span class="sc41"> </span><span class="sc50">||</span><span class="sc41"> </span><span class="sc47">typeof</span><span class="sc41"> </span><span class="sc46">lon</span><span class="sc41"> </span><span class="sc50">!==</span><span class="sc41"> </span><span class="sc49">'number'</span><span class="sc41"> </span><span class="sc50">||</span><span class="sc41"> </span><span class="sc46">isNaN</span><span class="sc50">(</span><span class="sc46">lat</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">||</span><span class="sc41"> </span><span class="sc46">isNaN</span><span class="sc50">(</span><span class="sc46">lon</span><span class="sc50">))</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41">
-                  </span><span class="sc46">console.error</span><span class="sc50">(</span><span class="sc48">"Invalid location data received:"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">location</span><span class="sc50">);</span><span class="sc41"> 
-                  </span><span class="sc47">if</span><span class="sc41"> </span><span class="sc50">(</span><span class="sc46">textElement</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc46">textElement.innerText</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc48">"Invalid GPS Data"</span><span class="sc50">;</span><span class="sc41">
-                  </span><span class="sc47">return</span><span class="sc50">;</span><span class="sc41">
-              </span><span class="sc50">}</span><span class="sc41">
+              if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                  console.error("Invalid location data received:", location); 
+                  if (textElement) textElement.innerText = "Invalid GPS Data";
+                  return;
+              }
 
-              </span><span class="sc43">// Construct apiUrl using traditional string concatenation</span><span class="sc41">
-              </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">apiUrl</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc48">"https://api.mapbox.com/search/geocode/v6/reverse"</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41">
-                             </span><span class="sc48">"?longitude="</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41"> </span><span class="sc46">encodeURIComponent</span><span class="sc50">(</span><span class="sc46">lon</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41">
-                             </span><span class="sc48">"&amp;latitude="</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41"> </span><span class="sc46">encodeURIComponent</span><span class="sc50">(</span><span class="sc46">lat</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41">
-                             </span><span class="sc48">"&amp;types="</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41"> </span><span class="sc46">encodeURIComponent</span><span class="sc50">(</span><span class="sc46">featureTypesForAPIString</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41">
-                             </span><span class="sc48">"&amp;language="</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41"> </span><span class="sc46">encodeURIComponent</span><span class="sc50">(</span><span class="sc46">specificLang</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41">
-                             </span><span class="sc48">"&amp;access_token="</span><span class="sc41"> </span><span class="sc50">+</span><span class="sc41"> </span><span class="sc46">encodeURIComponent</span><span class="sc50">(</span><span class="sc46">MAPBOX_ACCESS_TOKEN</span><span class="sc50">);</span><span class="sc41">
+              const apiUrl = "https://api.mapbox.com/search/geocode/v6/reverse" +
+                             "?longitude=" + encodeURIComponent(lon) +
+                             "&latitude=" + encodeURIComponent(lat) +
+                             "&types=" + encodeURIComponent(featureTypesForAPIString) +
+                             "&language=" + encodeURIComponent(specificLang) +
+                             "&access_token=" + encodeURIComponent(MAPBOX_ACCESS_TOKEN);
               
-              </span><span class="sc46">console.log</span><span class="sc50">(</span><span class="sc48">"Requesting Mapbox URL:"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">apiUrl</span><span class="sc50">);</span><span class="sc41">
+              console.log("Requesting Mapbox URL:", apiUrl);
 
-              </span><span class="sc46">fetch</span><span class="sc50">(</span><span class="sc46">apiUrl</span><span class="sc50">)</span><span class="sc41">
-                  </span><span class="sc50">.</span><span class="sc46">then</span><span class="sc50">(</span><span class="sc46">response</span><span class="sc41"> </span><span class="sc50">=&gt;</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41"> 
-                      </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">responseOk</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc46">response.ok</span><span class="sc50">;</span><span class="sc41">
-                      </span><span class="sc47">const</span><span class="sc41"> </span><span class="sc46">responseStatus</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> </span><span class="sc46">response.status</span><span class="sc50">;</span><span class="sc41">
-                      </span><span class="sc47">return</span><span class="sc41"> </span><span class="sc46">response.text</span><span class="sc50">().</span><span class="sc46">then</span><span class="sc50">(</span><span class="sc46">responseText</span><span class="sc41"> </span><span class="sc50">=&gt;</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41">
-                          </span><span class="sc47">return</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41"> </span><span class="sc46">ok</span><span class="sc50">:</span><span class="sc41"> </span><span class="sc46">responseOk</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">status</span><span class="sc50">:</span><span class="sc41"> </span><span class="sc46">responseStatus</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">text</span><span class="sc50">:</span><span class="sc41"> </span><span class="sc46">responseText</span><span class="sc41"> </span><span class="sc50">};</span><span class="sc41">
-                      </span><span class="sc50">});</span><span class="sc41">
-                  </span><span class="sc50">})</span><span class="sc41">
-                  </span><span class="sc50">.</span><span class="sc46">then</span><span class="sc50">(({</span><span class="sc41"> </span><span class="sc46">ok</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">status</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">text</span><span class="sc41"> </span><span class="sc50">})</span><span class="sc41"> </span><span class="sc50">=&gt;</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41"> 
-                      </span><span class="sc46">console.log</span><span class="sc50">(</span><span class="sc48">"Mapbox API - Status:"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">status</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc48">"Raw Response Text:"</span><span class="sc50">,</span><span class="sc41"> </span><span class="sc46">text</span><span class="sc50">);</span><span class="sc41"> 
+              fetch(apiUrl)
+                  .then(response => { 
+                      const responseOk = response.ok;
+                      const responseStatus = response.status;
+                      return response.text().then(responseText => {
+                          return { ok: responseOk, status: responseStatus, text: responseText };
+                      });
+                  })
+                  .then(({ ok, status, text }) => { 
+                      console.log("Mapbox API - Status:", status, "Raw Response Text:", text); 
 
-                      </span><span class="sc47">if</span><span class="sc41"> </span><span class="sc50">(!</span><span class="sc46">ok</span><span class="sc50">)</span><span class="sc41"> </span><span class="sc50">{</span><span class="sc41">
-                          </span><span class="sc47">let</span><span class="sc41"> </span><span class="sc46">errorMsg</span><span class="sc41"> </span><span class="sc50">=</span><span class="sc41"> \</span><span class="sc53">`HTTP error \${status}: \`; // Backticks for template literal
+                      if (!ok) {
+                          // MODIFIED: Changed template literal to string concatenation for errorMsg
+                          let errorMsg = "HTTP error " + status + ": "; 
                           try { 
                               const errorData = JSON.parse(text); 
                               errorMsg += (errorData.message || text.substring(0,200)); 
@@ -185,25 +112,26 @@ span {
                           return jsonData; 
                       } catch (e) {
                           console.error("Mapbox API Response (2xx) - FAILED TO PARSE TEXT AS JSON. Error:", e.message); 
-                          throw new Error(\`Received 2xx status, but response text was not valid JSON. Preview: \${text.substring(0,200)}\`); // Backticks
+                          // MODIFIED: Changed template literal to string concatenation
+                          throw new Error("Received 2xx status, but response text was not valid JSON. Preview: " + text.substring(0,200));
                       }
                   })
-                  .then(dataFromMapbox =&gt; { 
+                  .then(dataFromMapbox => { 
                       console.log("Data successfully parsed, processing context..."); 
                       var context = {};
-                      if (dataFromMapbox &amp;&amp; dataFromMapbox.features) {
+                      if (dataFromMapbox && dataFromMapbox.features) {
                           for (const param of featureParamsToExtract) {
                               const foundFeature = dataFromMapbox.features.find(
-                                  (feature) =&gt; feature.properties &amp;&amp; feature.properties.feature_type === param
+                                  (feature) => feature.properties && feature.properties.feature_type === param
                               );
-                              if (foundFeature &amp;&amp; foundFeature.properties &amp;&amp; foundFeature.properties.name) {
+                              if (foundFeature && foundFeature.properties && foundFeature.properties.name) {
                                   context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
                               }
                           }
-                          if (dataFromMapbox.features.length &gt; 0 &amp;&amp; dataFromMapbox.features[0].properties &amp;&amp; dataFromMapbox.features[0].properties.context) {
+                          if (dataFromMapbox.features.length > 0 && dataFromMapbox.features[0].properties && dataFromMapbox.features[0].properties.context) {
                               const mainFeatureContext = dataFromMapbox.features[0].properties.context;
                               for (const param of featureParamsToExtract) {
-                                  if (!context[param] &amp;&amp; mainFeatureContext[param] &amp;&amp; mainFeatureContext[param].name) {
+                                  if (!context[param] && mainFeatureContext[param] && mainFeatureContext[param].name) {
                                       context[param] = { text: mainFeatureContext[param].name, ...mainFeatureContext[param] };
                                   }
                               }
@@ -212,10 +140,10 @@ span {
                       console.log("Populated Context for formatting:", JSON.stringify(context, null, 2)); 
                       
                       let resultParts = [];
-                      if (context.address &amp;&amp; context.address.text) { resultParts.push(context.address.text); }
-                      if (context.neighborhood &amp;&amp; context.neighborhood.text) { resultParts.push(context.neighborhood.text); }
-                      if (context.locality &amp;&amp; context.locality.text) { resultParts.push(context.locality.text); }
-                      if (context.place &amp;&amp; context.place.text) { resultParts.push(context.place.text); }
+                      if (context.address && context.address.text) { resultParts.push(context.address.text); }
+                      if (context.neighborhood && context.neighborhood.text) { resultParts.push(context.neighborhood.text); }
+                      if (context.locality && context.locality.text) { resultParts.push(context.locality.text); }
+                      if (context.place && context.place.text) { resultParts.push(context.place.text); }
                       
                       let result = resultParts.join(', ');
                       console.log("Constructed Result String:", result); 
@@ -225,13 +153,13 @@ span {
                       cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
                       console.log("Cleaned Result:", cleanedResult); 
 
-                      if (cleanedResult &amp;&amp; !cleanedResult.toLocaleLowerCase().includes("undefined") &amp;&amp; cleanedResult.replace(/,/g, "").trim() !== "") { 
+                      if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
                         textElement.innerText = cleanedResult;
                       } else {
                         textElement.innerText = "Location details not found";
                       }
                   })
-                  .catch(error =&gt; {
+                  .catch(error => {
                       console.error("Final CATCH block error:", error); 
                       if (textElement) { 
                           textElement.innerText = "Geocoding Process Error"; 
@@ -244,7 +172,6 @@ span {
           if (textElement) textElement.innerText = "Error: RealtimeIRL library failed to load.";
         }
       }); 
-    &lt;/script&gt;
-  &lt;/body&gt;
-&lt;/html&gt;</span></div></body>
+    </script>
+  </body>
 </html>
