@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neighborhood Display v6 - Simplified</title>
+    <title>Neighborhood Display v6 - SyntaxFix Attempt</title>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script defer src="https://overlays.rtirl.com/indicator.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
@@ -50,32 +50,27 @@
         const pullKey = urlParams.get("key"); 
         const specificLang = "en";
         
-        // Define feature types to request from the API.
-        // secondary_address removed from this primary list for API query for simplicity in reverse geocoding context,
-        // though API might still return it if coordinate is very precise.
+        // Define feature types to request from the API. 'secondary_address' removed.
         const featureTypesForAPI = ["address", "neighborhood", "locality", "place", "district", "region", "postcode", "country"];
         const featureTypesForAPIString = featureTypesForAPI.join(',');
         
         // Define feature types we want to try and extract for our display string.
         const featureParamsToExtract = ["address", "neighborhood", "locality", "place"]; 
-                                      // Removed "secondary_address".
-                                      // Kept district, region, postcode, country for context population,
-                                      // but they are not in the display string by default.
-
+                                      
         let lastGeocodeTime = 0;
         const geocodeInterval = 1500; 
         const textElement = document.getElementById("text");
 
-        console.log("Script loaded. Pull key from URL:", pullKey);
+        console.log("Script loaded. Pull key from URL:", pullKey); // Log 1
 
         if (!pullKey) {
           if (textElement) textElement.innerText = "Error: Key missing from URL.";
-          console.error("Pull key is missing from URL parameters.");
+          console.error("Pull key is missing from URL parameters."); // Log 2 (conditional)
         } else {
-          console.log("Attempting to set up RealtimeIRL listener for key:", pullKey);
+          console.log("Attempting to set up RealtimeIRL listener for key:", pullKey); // Log 3
           if (typeof RealtimeIRL !== 'undefined') {
             RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-              console.log("--- Location listener fired --- Location object (raw):", JSON.stringify(location)); 
+              console.log("--- Location listener fired --- Location object (raw):", JSON.stringify(location)); // Log 4
               const currentTime = new Date().getTime();
               if (currentTime - lastGeocodeTime > geocodeInterval) {
                 lastGeocodeTime = currentTime; 
@@ -83,34 +78,49 @@
                 const lat = location.latitude;
 
                 if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
-                    console.error("Invalid location data received:", location);
+                    console.error("Invalid location data received:", location); // Log 5 (conditional)
                     if (textElement) textElement.innerText = "Invalid GPS Data";
                     return;
                 }
                 const apiUrl = \`https://api.mapbox.com/search/geocode/v6/reverse?longitude=\${lon}&latitude=\${lat}&types=\${featureTypesForAPIString}&language=\${specificLang}&access_token=\${MAPBOX_ACCESS_TOKEN}\`;
-                console.log("Requesting Mapbox URL:", apiUrl);
+                console.log("Requesting Mapbox URL:", apiUrl); // Log 6
 
                 fetch(apiUrl)
-                    .then(async response => { 
-                        const responseText = await response.text(); 
-                        console.log("Mapbox API - Status:", response.status, "Raw Response Text:", responseText); 
-                        if (!response.ok) {
-                            let errorMsg = \`HTTP error \${response.status}: \`;
-                            try { const errorData = JSON.parse(responseText); errorMsg += (errorData.message || responseText.substring(0,200)); }
-                            catch (e) { errorMsg += responseText.substring(0,200); }
+                    .then(response => { // First .then callback
+                        const responseOk = response.ok;
+                        const responseStatus = response.status;
+                        // Return a promise that resolves with the text and original status/ok values
+                        return response.text().then(responseText => {
+                            return { ok: responseOk, status: responseStatus, text: responseText };
+                        });
+                    })
+                    .then(({ ok, status, text }) => { // Destructure the object passed from previous .then
+                        console.log("Mapbox API - Status:", status, "Raw Response Text:", text); // Log 7
+
+                        if (!ok) {
+                            let errorMsg = \`HTTP error \${status}: \`;
+                            try { 
+                                const errorData = JSON.parse(text); 
+                                errorMsg += (errorData.message || text.substring(0,200)); 
+                            } catch (e) { 
+                                errorMsg += text.substring(0,200); 
+                            }
                             throw new Error(errorMsg); 
                         }
-                        try { const jsonData = JSON.parse(responseText); return jsonData; }
-                        catch (e) {
-                            console.error("Mapbox API Response (2xx) - FAILED TO PARSE TEXT AS JSON. Error:", e.message);
-                            throw new Error(\`Received 2xx status, but response text was not valid JSON. Preview: \${responseText.substring(0,200)}\`);
+                        // If response.ok is true, try to parse the text as JSON
+                        try { 
+                            const jsonData = JSON.parse(text); 
+                            return jsonData; 
+                        } catch (e) {
+                            console.error("Mapbox API Response (2xx) - FAILED TO PARSE TEXT AS JSON. Error:", e.message); // Log 8 (conditional)
+                            throw new Error(\`Received 2xx status, but response text was not valid JSON. Preview: \${text.substring(0,200)}\`);
                         }
                     })
                     .then(dataFromMapbox => { 
-                        console.log("Data successfully parsed, processing context..."); 
+                        console.log("Data successfully parsed, processing context..."); // Log 9
                         var context = {};
                         if (dataFromMapbox && dataFromMapbox.features) {
-                            for (const param of featureParamsToExtract) { // Uses the simplified featureParamsToExtract
+                            for (const param of featureParamsToExtract) {
                                 const foundFeature = dataFromMapbox.features.find(
                                     (feature) => feature.properties && feature.properties.feature_type === param
                                 );
@@ -118,7 +128,6 @@
                                     context[param] = { text: foundFeature.properties.name, ...foundFeature.properties };
                                 }
                             }
-                            // Still check main feature's context for fallbacks
                             if (dataFromMapbox.features.length > 0 && dataFromMapbox.features[0].properties && dataFromMapbox.features[0].properties.context) {
                                 const mainFeatureContext = dataFromMapbox.features[0].properties.context;
                                 for (const param of featureParamsToExtract) {
@@ -128,31 +137,22 @@
                                 }
                             }
                         }
-                        console.log("Populated Context for formatting:", JSON.stringify(context, null, 2));
+                        console.log("Populated Context for formatting:", JSON.stringify(context, null, 2)); // Log 10
 
                         // Direct string construction using the context
                         let resultParts = [];
-                        // Order: address, neighborhood, locality, place (secondary_address removed)
-                        if (context.address && context.address.text) {
-                            resultParts.push(context.address.text);
-                        }
-                        if (context.neighborhood && context.neighborhood.text) {
-                            resultParts.push(context.neighborhood.text);
-                        }
-                        if (context.locality && context.locality.text) {
-                            resultParts.push(context.locality.text);
-                        }
-                        if (context.place && context.place.text) {
-                            resultParts.push(context.place.text);
-                        }
+                        if (context.address && context.address.text) { resultParts.push(context.address.text); }
+                        if (context.neighborhood && context.neighborhood.text) { resultParts.push(context.neighborhood.text); }
+                        if (context.locality && context.locality.text) { resultParts.push(context.locality.text); }
+                        if (context.place && context.place.text) { resultParts.push(context.place.text); }
                         
                         let result = resultParts.join(', ');
-                        console.log("Constructed Result String:", result);
+                        console.log("Constructed Result String:", result); // Log 11
 
                         let cleanedResult = String(result).trim(); 
                         cleanedResult = cleanedResult.replace(/^[\s,]+|[\s,]+$/g, ''); 
                         cleanedResult = cleanedResult.replace(/,(\s*,)+/g, ',');    
-                        console.log("Cleaned Result:", cleanedResult);
+                        console.log("Cleaned Result:", cleanedResult); // Log 12
 
                         if (cleanedResult && !cleanedResult.toLocaleLowerCase().includes("undefined") && cleanedResult.replace(/,/g, "").trim() !== "") { 
                           textElement.innerText = cleanedResult;
@@ -161,7 +161,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error("Final CATCH block error:", error); 
+                        console.error("Final CATCH block error:", error); // Log 13 (conditional)
                         if (textElement) { 
                             textElement.innerText = "Geocoding Process Error"; 
                         }
@@ -169,7 +169,7 @@
               } 
             }); 
           } else { 
-            console.error("CRITICAL ERROR: RealtimeIRL object is not defined. The RealtimeIRL API script likely failed to load or was blocked.");
+            console.error("CRITICAL ERROR: RealtimeIRL object is not defined."); // Log 14 (conditional)
             if (textElement) textElement.innerText = "Error: RealtimeIRL library failed to load.";
           }
         } 
