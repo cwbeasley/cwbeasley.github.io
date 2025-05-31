@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Live Overlay</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="youtube-live-overlay">
+        <div id="overlay-header">
+            <h2>Live Stream Status</h2>
+            <div id="live-status-display">Status: Initializing...</div>
+        </div>
+        <div id="player-container">
+            <iframe id="youtube-live-embed"
+                    width="100%"
+                    height="100%"
+                    frameborder="0"
+                    allow="autoplay; encrypted-media"
+                    allowfullscreen>
+            </iframe>
+        </div>
+        <button id="refresh-status-button">Refresh Status</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
