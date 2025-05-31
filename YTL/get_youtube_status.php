@@ -3,7 +3,7 @@ header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *'); // For development; restrict in production
 
 // --- CONFIGURATION ---
-$apiKey = 'AIzaSyDwCheNUNffXxXRZgHUq8oJDfqdFXGcXfE'; // YOUR YOUTUBE DATA API v3 KEY
+$apiKey = 'test key invalid'; // YOUR YOUTUBE DATA API v3 KEY
 // IMPORTANT: In a production environment, store your API key more securely!
 // For example, use an environment variable: $apiKey = getenv('YOUTUBE_API_KEY');
 // Or include it from a file outside the web root.
