@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- 
+      IMPORTANT: Save this file with a new name, like "googlemapsv9.html",
+      and clear your browser cache to ensure this new version is loaded.
+    -->
+    <title>Working Map with Smooth Animations v9</title>
+    <!-- Animation Libraries -->
+    <script src="tween.umd.js"></script>
+    <script src="angles.min.js"></script>
+    <!-- RealtimeIRL Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+    <script src="https://overlays.rtirl.com/indicator.js"></script>
+
+    <style>
+      html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          overflow: hidden !important;
+          background-color: rgba(0, 0, 0, 0) !important;
+      }
+
+      .map-circle-wrapper {
+          width: 350px !important;
+          height: 350px !important;
+          border-radius: 50% !important;
+          overflow: hidden !important;
+          border: 6px solid #4285F4 !important;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+          background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+
+      #map {
+          width: 100% !important;
+          height: 100% !important;
+      }
+      
+      .gm-style-cc, .gmnoprint {
+          display: none !important;
+      }
+    </style>
+</head>
+<body>
+    <div class="map-circle-wrapper">
+        <div id="map"></div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // --- Configuration ---
+            const params = new URLSearchParams(window.location.search);
+            const EMA_ALPHA = 0.3; // Smoothing for location. Lower is smoother but lags more.
+            const POSITION_ANIMATION_DURATION_MS = 1200; // Duration for marker movement.
+            const BEARING_ANIMATION_DURATION_MS = 1500; // Duration for map rotation.
+
+            // --- State Variables ---
+            let map;
+            let advancedMarker;
+            let currentAnimatedCoords = null; 
+            let previousSmoothedPosition = null;
+            let previousEmaLat = null;
+            let previousEmaLng = null;
+            let activePositionTween = null;
+            let activeBearingTween = null;
+
+            // --- Main Initialization ---
+            function setupGoogleMap() {
+                const mapId = "5a45ae59a3d1e20f1361b7ce"; 
+                Angles.SCALE = 360; // Configure angles.js for degrees.
+
+                const initialCenter = { lat: 38.6270, lng: -90.1994 };
+                const initialZoom = params.get("zoom") ? Number(params.get("zoom")) : 17;
+                
+                map = new google.maps.Map(document.getElementById("map"), {
+                    center: initialCenter,
+                    zoom: initialZoom,
+                    disableDefaultUI: true,
+                    mapId: mapId,
+                    tilt: 45,
+                    heading: 0
+                });
+
+                currentAnimatedCoords = { lat: initialCenter.lat, lng: initialCenter.lng };
+                previousSmoothedPosition = { lat: initialCenter.lat, lng: initialCenter.lng };
+
+                advancedMarker = new google.maps.marker.AdvancedMarkerElement({
+                    map: map,
+                    position: initialCenter,
+                });
+
+                requestAnimationFrame(animateTweens);
+
+                const pullKey = params.get("key");
+                if (pullKey) {
+                    RealtimeIRL.forPullKey(pullKey).addLocationListener(handleRealtimeIRLLocation);
+                } else {
+                    console.warn("RealtimeIRL pull key is missing.");
+                    document.getElementById("map").innerHTML = "<p style='color:orange; text-align:center; padding: 20px;'>RealtimeIRL 'key' missing.</p>";
+                }
+            }
+
+            // --- Core Logic ---
+            function animateTweens(time) {
+                TWEEN.update(time);
+                requestAnimationFrame(animateTweens);
+            }
+
+            function getSmoothedLocation(rawLat, rawLng) {
+                if (previousEmaLat === null) {
+                    previousEmaLat = rawLat;
+                    previousEmaLng = rawLng;
+                } else {
+                    previousEmaLat = EMA_ALPHA * rawLat + (1 - EMA_ALPHA) * previousEmaLat;
+                    previousEmaLng = EMA_ALPHA * rawLng + (1 - EMA_ALPHA) * previousEmaLng;
+                }
+                return { lat: previousEmaLat, lng: previousEmaLng };
+            }
+
+            function handleRealtimeIRLLocation(location) {
+                if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') return;
+
+                const smoothedPosition = getSmoothedLocation(location.latitude, location.longitude);
+                if (!smoothedPosition) return;
+
+                animatePosition(smoothedPosition);
+                animateBearing(smoothedPosition);
+                
+                previousSmoothedPosition = smoothedPosition;
+            }
+
+            // --- Animation Functions (Corrected Logic) ---
+            function animatePosition(targetPosition) {
+                if (!currentAnimatedCoords) {
+                    currentAnimatedCoords = targetPosition;
+                    return;
+                }
+                
+                if (activePositionTween) activePositionTween.stop();
+
+                activePositionTween = new TWEEN.Tween(currentAnimatedCoords)
+                    .to(targetPosition, POSITION_ANIMATION_DURATION_MS)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(() => {
+                        // Directly use the values from the object being tweened
+                        const newPosition = { lat: currentAnimatedCoords.lat, lng: currentAnimatedCoords.lng };
+                        if (advancedMarker) advancedMarker.position = newPosition;
+                        if (map) map.moveCamera({ center: newPosition });
+                    })
+                    .onComplete(() => { activePositionTween = null; })
+                    .start();
+            }
+
+            function animateBearing(targetPosition) {
+                if (!map || !previousSmoothedPosition || (previousSmoothedPosition.lat === targetPosition.lat && previousSmoothedPosition.lng === targetPosition.lng)) {
+                    return;
+                }
+
+                const prevLatLng = new google.maps.LatLng(previousSmoothedPosition.lat, previousSmoothedPosition.lng);
+                const targetLatLng = new google.maps.LatLng(targetPosition.lat, targetPosition.lng);
+                const targetBearing = google.maps.geometry.spherical.computeHeading(prevLatLng, targetLatLng);
+                
+                const startBearing = map.getHeading() || 0;
+                const endBearing = Angles.normalize(targetBearing);
+
+                if (Math.abs(Angles.diff(startBearing, endBearing)) < 1) return;
+
+                if (activeBearingTween) activeBearingTween.stop();
+                
+                const direction = Angles.shortestDirection(startBearing, endBearing);
+                const bearingAnimationState = { progress: 0 };
+
+                activeBearingTween = new TWEEN.Tween(bearingAnimationState)
+                    .to({ progress: 1 }, BEARING_ANIMATION_DURATION_MS)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(() => {
+                        const interpolatedBearing = Angles.lerp(startBearing, endBearing, bearingAnimationState.progress, direction);
+                        map.moveCamera({ heading: interpolatedBearing });
+                    })
+                    .onComplete(() => { activeBearingTween = null; })
+                    .start();
+            }
+
+            // --- API Loading ---
+            const apiKey = params.get("api_key");
+            if (!apiKey) {
+                console.error("Google Maps API key is missing.");
+                document.getElementById("map").innerHTML = "<p style='color:red; text-align:center; padding: 20px;'>Google Maps 'api_key' missing.</p>";
+            } else {
+                window.setupGoogleMap = setupGoogleMap;
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=setupGoogleMap&libraries=marker,geometry&v=beta`;
+                script.async = true; // Use async for best performance practices
+                script.defer = true;
+                document.head.appendChild(script);
+            }
+        })();
+    </script>
+</body>
+</html>
