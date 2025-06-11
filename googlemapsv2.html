@@ -135,8 +135,7 @@
 
         // --- EMA Smoothing ---
         function getSmoothedLocation(rawLat, rawLng) { // [1, 2, 3]
-            if (typeof rawLat!== 'number' |
-| typeof rawLng!== 'number') {
+            if (typeof rawLat!== 'number' || typeof rawLng!== 'number') {
                 console.warn("Invalid raw coordinates for smoothing:", rawLat, rawLng);
                 return (previousEmaLat!== null && previousEmaLng!== null)? { lat: previousEmaLat, lng: previousEmaLng } : null;
             }
