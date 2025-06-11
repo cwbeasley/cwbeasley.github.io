@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smooth Map Navigation Overlay</title>
+    <script src="tween.umd.js"></script>
+    <script src="angles.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
+    <script src="https://overlays.rtirl.com/indicator.js"></script>
+
+    <style>
+        html, body {
+            margin: 0!important;
+            padding: 0!important;
+            width: 100%!important;
+            height: 100%!important;
+            overflow: hidden!important; /* Hide scrollbars for the whole window */
+            background-color: rgba(0, 0, 0, 0)!important; /* Makes the background transparent */
+        }
+
+    .map-circle-wrapper {
+            width: 350px!important; /* Adjust this value for your desired circle size */
+            height: 350px!important; /* Must be equal to width for a perfect circle */
+            border-radius: 50%!important; /* Makes this div a perfect circle */
+            overflow: hidden!important; /* Clips content outside the circle */
+            border: 6px solid #4285F4!important; /* Google-blue border */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4)!important; /* Adds shadow */
+            background-color: rgba(255, 255, 255, 0.05)!important; /* Subtle transparent background for the circle */
+        }
+
+        #map {
+            width: 100%!important;
+            height: 100%!important;
+            display: flex; /* Used for centering error messages */
+            align-items: center;
+            justify-content: center;
+        }
+
+    .gm-style-cc,.gmnoprint { /* Hides Google Maps default UI elements like copyright, terms of use */
+            display: none!important;
+        }
+    </style>
+</head>
+<body>
+    <div class="map-circle-wrapper">
+        <div id="map"></div>
+    </div>
+
+    <script>
+        // --- Configuration Variables (Nominal values set directly) ---
+        const EMA_ALPHA = 0.3;
+        const POSITION_ANIMATION_DURATION_MS = 1000;
+        const BEARING_ANIMATION_DURATION_MS = 1500;
+        
+        // --- Global Variables & Setup ---
+        const params = new URLSearchParams(window.location.search); // Declared ONCE.
+        let map;
+        let advancedMarker;
+        let currentAnimatedPosition = null;
+        let previousSmoothedPosition = null;
+        let previousEmaLat = null;
+        let previousEmaLng = null;
+        let activePositionTween = null;
+        let activeBearingTween = null;
+
+        // --- Initialization ---
+        function initMap() {
+            // The 'params' constant is already declared globally, so we use it directly.
+            const mapId = params.get("map_id") || "DEMO_MAP_ID"; 
+            Angles.SCALE = 360;
+
+            const initialCenter = { lat: -34.397, lng: 150.644 };
+            const initialZoom = params.get("zoom")? Number(params.get("zoom")) : 17;
+            const mapStylesParam = params.get("style");
+            let mapStyles = [];
+            if (mapStylesParam) {
+                try {
+                    mapStyles = JSON.parse(atob(decodeURIComponent(mapStylesParam)));
+                } catch (e) {
+                    console.error("Error parsing map styles:", e);
+                }
+            }
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: initialCenter,
+                zoom: initialZoom,
+                disableDefaultUI: true,
+                styles: mapStyles,
+                mapId: mapId,
+                tilt: 45,
+                heading: 0
+            });
+
+            currentAnimatedPosition = map.getCenter();
+            previousSmoothedPosition = { lat: currentAnimatedPosition.lat(), lng: currentAnimatedPosition.lng() };
+
+            advancedMarker = new google.maps.marker.AdvancedMarkerElement({
+                map: map,
+                position: initialCenter,
+            });
+
+            requestAnimationFrame(animateTweens);
+
+            const pullKey = params.get("key");
+            if (pullKey) {
+                RealtimeIRL.forPullKey(pullKey).addLocationListener(handleRealtimeIRLLocation);
+            } else {
+                console.warn("RealtimeIRL pull key is missing (URL parameter 'key').");
+                const mapDiv = document.getElementById("map");
+                mapDiv.innerHTML = "<p style='color:orange; text-align:center; padding: 20px;'>RealtimeIRL 'key' parameter missing from URL.</p>";
+            }
+        }
+
+        function animateTweens(time) {
+            TWEEN.update(time);
+            requestAnimationFrame(animateTweens);
+        }
+
+        // --- EMA Smoothing ---
+        function getSmoothedLocation(rawLat, rawLng) {
+            if (typeof rawLat !== 'number' || typeof rawLng !== 'number') {
+                console.warn("Invalid raw coordinates for smoothing:", rawLat, rawLng);
+                return (previousEmaLat !== null && previousEmaLng !== null) ? { lat: previousEmaLat, lng: previousEmaLng } : null;
+            }
+
+            if (previousEmaLat === null || previousEmaLng === null) {
+                previousEmaLat = rawLat;
+                previousEmaLng = rawLng;
+            } else {
+                previousEmaLat = EMA_ALPHA * rawLat + (1 - EMA_ALPHA) * previousEmaLat;
+                previousEmaLng = EMA_ALPHA * rawLng + (1 - EMA_ALPHA) * previousEmaLng;
+            }
+            return { lat: previousEmaLat, lng: previousEmaLng };
+        }
+
+        // --- RealtimeIRL Handler ---
+        function handleRealtimeIRLLocation(location) {
+            if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+                console.warn("Invalid location data received from RealtimeIRL:", location);
+                return;
+            }
+
+            const rawPosition = { lat: location.latitude, lng: location.longitude };
+            const smoothedPosition = getSmoothedLocation(rawPosition.lat, rawPosition.lng);
+
+            if (!smoothedPosition || typeof smoothedPosition.lat !== 'number' || typeof smoothedPosition.lng !== 'number') {
+                console.warn("Invalid smoothed position:", smoothedPosition);
+                return;
+            }
+
+            const newTargetLatLng = new google.maps.LatLng(smoothedPosition.lat, smoothedPosition.lng);
+
+            // --- Animate Marker Position ---
+            if (currentAnimatedPosition && newTargetLatLng) {
+                const startPosForTween = currentAnimatedPosition;
+                const endPosForTween = newTargetLatLng;
+
+                if (activePositionTween) {
+                    activePositionTween.stop();
+                }
+
+                const animationState = { progress: 0 };
+                activePositionTween = new TWEEN.Tween(animationState)
+                    .to({ progress: 1 }, POSITION_ANIMATION_DURATION_MS)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(() => {
+                        const interpolatedLatLng = google.maps.geometry.spherical.interpolate(
+                            startPosForTween,
+                            endPosForTween,
+                            animationState.progress
+                        );
+                        if (advancedMarker && interpolatedLatLng) {
+                            advancedMarker.position = interpolatedLatLng;
+                        }
+                        if (map && interpolatedLatLng) {
+                           map.moveCamera({ center: interpolatedLatLng });
+                        }
+                        currentAnimatedPosition = interpolatedLatLng;
+                    })
+                    .onComplete(() => {
+                        currentAnimatedPosition = endPosForTween;
+                        if (advancedMarker) {
+                             advancedMarker.position = endPosForTween;
+                        }
+                        if (map) {
+                            map.moveCamera({ center: endPosForTween });
+                        }
+                        activePositionTween = null;
+                    })
+                    .start();
+            } else { 
+                if (advancedMarker) {
+                    advancedMarker.position = newTargetLatLng;
+                }
+                if (map) {
+                    map.setCenter(newTargetLatLng);
+                }
+                currentAnimatedPosition = newTargetLatLng;
+            }
+
+            // --- Animate Map Bearing/Heading ---
+            if (map && previousSmoothedPosition && (previousSmoothedPosition.lat !== smoothedPosition.lat || previousSmoothedPosition.lng !== smoothedPosition.lng)) {
+                const prevLatLngForHeading = new google.maps.LatLng(previousSmoothedPosition.lat, previousSmoothedPosition.lng);
+                let targetBearing = google.maps.geometry.spherical.computeHeading(prevLatLngForHeading, newTargetLatLng);
+
+                const currentMapBearing = map.getHeading() || 0;
+                const startBearingNormalized = Angles.normalize(currentMapBearing);
+                const targetBearingNormalized = Angles.normalize(targetBearing);
+
+                if (Math.abs(Angles.diff(startBearingNormalized, targetBearingNormalized)) > 1) {
+                    const direction = Angles.shortestDirection(startBearingNormalized, targetBearingNormalized);
+
+                    if (activeBearingTween) {
+                        activeBearingTween.stop();
+                    }
+
+                    const bearingState = { progress: 0 };
+                    activeBearingTween = new TWEEN.Tween(bearingState)
+                        .to({ progress: 1 }, BEARING_ANIMATION_DURATION_MS)
+                        .easing(TWEEN.Easing.Quadratic.Out)
+                        .onUpdate(() => {
+                            const interpolatedBearing = Angles.lerp(startBearingNormalized, targetBearingNormalized, bearingState.progress, direction);
+                            map.moveCamera({ heading: interpolatedBearing });
+                        })
+                        .onComplete(() => {
+                            map.moveCamera({ heading: targetBearingNormalized });
+                            activeBearingTween = null;
+                        })
+                        .start();
+                }
+            }
+            previousSmoothedPosition = smoothedPosition;
+        }
+
+        // --- Load Google Maps API and Initialize ---
+        const apiKey = params.get("api_key");
+
+        if (!apiKey) {
+            console.error("Google Maps API key is missing. Please provide it as a URL parameter: ?api_key=YOUR_KEY");
+            const mapDiv = document.getElementById("map");
+            mapDiv.innerHTML = "<p style='color:red; text-align:center; padding: 20px;'>Google Maps API key ('api_key') missing from URL.</p>";
+            const wrapper = document.querySelector('.map-circle-wrapper');
+            if (wrapper) wrapper.style.borderColor = 'red';
+        } else {
+            window.initMap = initMap;
+
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap&libraries=marker,geometry&v=beta`;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    </script>
+</body>
+</html>
