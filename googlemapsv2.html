@@ -140,8 +140,7 @@
                 return (previousEmaLat!== null && previousEmaLng!== null)? { lat: previousEmaLat, lng: previousEmaLng } : null;
             }
 
-            if (previousEmaLat === null |
-| previousEmaLng === null) {
+            if (previousEmaLat === null || previousEmaLng === null) {
                 previousEmaLat = rawLat;
                 previousEmaLng = rawLng;
             } else {
@@ -153,9 +152,7 @@
 
         // --- RealtimeIRL Handler ---
         function handleRealtimeIRLLocation(location) {
-            if (!location |
-| typeof location.latitude!== 'number' |
-| typeof location.longitude!== 'number') {
+            if (!location || typeof location.latitude!== 'number' || typeof location.longitude!== 'number') {
                 console.warn("Invalid location data received from RealtimeIRL:", location);
                 return;
             }
@@ -163,9 +160,7 @@
             const rawPosition = { lat: location.latitude, lng: location.longitude };
             const smoothedPosition = getSmoothedLocation(rawPosition.lat, rawPosition.lng);
 
-            if (!smoothedPosition |
-| typeof smoothedPosition.lat!== 'number' |
-| typeof smoothedPosition.lng!== 'number') {
+            if (!smoothedPosition || typeof smoothedPosition.lat!== 'number' || typeof smoothedPosition.lng!== 'number') {
                 console.warn("Invalid smoothed position:", smoothedPosition);
                 return;
             }
@@ -222,14 +217,12 @@
             }
 
             // --- Animate Map Bearing/Heading ---
-            if (map && previousSmoothedPosition && (previousSmoothedPosition.lat!== smoothedPosition.lat |
-| previousSmoothedPosition.lng!== smoothedPosition.lng)) {
+            if (map && previousSmoothedPosition && (previousSmoothedPosition.lat!== smoothedPosition.lat || previousSmoothedPosition.lng!== smoothedPosition.lng)) {
                 const prevLatLngForHeading = new google.maps.LatLng(previousSmoothedPosition.lat, previousSmoothedPosition.lng);
                 // Calculate heading between previous smoothed point and current smoothed point. [9, 10]
                 let targetBearing = google.maps.geometry.spherical.computeHeading(prevLatLngForHeading, newTargetLatLng);
 
-                const currentMapBearing = map.getHeading() |
-| 0;
+                const currentMapBearing = map.getHeading() || 0;
                 // Normalize angles to 0-360 range for consistent interpolation. [5]
                 const startBearingNormalized = Angles.normalize(currentMapBearing);
                 const targetBearingNormalized = Angles.normalize(targetBearing);
