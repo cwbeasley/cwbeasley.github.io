@@ -85,7 +85,7 @@
             const initialCenter = { lat: -34.397, lng: 150.644 }; // Default center
             const initialZoom = params.get("zoom")? Number(params.get("zoom")) : 17;
             const mapStylesParam = params.get("style");
-            let mapStyles =;
+            let mapStyles = ;
             if (mapStylesParam) {
                 try {
                     mapStyles = JSON.parse(atob(decodeURIComponent(mapStylesParam)));
