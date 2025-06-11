@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Working Map with Smooth Animations</title>
+    <!-- 
+      IMPORTANT: Save this file with a new name, like "googlemapsv9.html",
+      and clear your browser cache to ensure this new version is loaded.
+    -->
+    <title>Working Map with Smooth Animations v9</title>
     <!-- Animation Libraries -->
     <script src="tween.umd.js"></script>
     <script src="angles.min.js"></script>
@@ -84,16 +88,13 @@
                 currentAnimatedCoords = { lat: initialCenter.lat, lng: initialCenter.lng };
                 previousSmoothedPosition = { lat: initialCenter.lat, lng: initialCenter.lng };
 
-                // Use the modern AdvancedMarkerElement
                 advancedMarker = new google.maps.marker.AdvancedMarkerElement({
                     map: map,
                     position: initialCenter,
                 });
 
-                // Start the master animation loop
                 requestAnimationFrame(animateTweens);
 
-                // Start listening for RealtimeIRL location data
                 const pullKey = params.get("key");
                 if (pullKey) {
                     RealtimeIRL.forPullKey(pullKey).addLocationListener(handleRealtimeIRLLocation);
@@ -132,20 +133,23 @@
                 previousSmoothedPosition = smoothedPosition;
             }
 
-            // --- Animation Functions ---
+            // --- Animation Functions (Corrected Logic) ---
             function animatePosition(targetPosition) {
+                if (!currentAnimatedCoords) {
+                    currentAnimatedCoords = targetPosition;
+                    return;
+                }
+                
                 if (activePositionTween) activePositionTween.stop();
 
-                const startCoords = { ...currentAnimatedCoords };
-
-                activePositionTween = new TWEEN.Tween(startCoords)
+                activePositionTween = new TWEEN.Tween(currentAnimatedCoords)
                     .to(targetPosition, POSITION_ANIMATION_DURATION_MS)
                     .easing(TWEEN.Easing.Quadratic.Out)
                     .onUpdate(() => {
-                        const newPosition = new google.maps.LatLng(startCoords.lat, startCoords.lng);
+                        // Directly use the values from the object being tweened
+                        const newPosition = { lat: currentAnimatedCoords.lat, lng: currentAnimatedCoords.lng };
                         if (advancedMarker) advancedMarker.position = newPosition;
                         if (map) map.moveCamera({ center: newPosition });
-                        currentAnimatedCoords = { lat: startCoords.lat, lng: startCoords.lng };
                     })
                     .onComplete(() => { activePositionTween = null; })
                     .start();
@@ -189,8 +193,8 @@
             } else {
                 window.setupGoogleMap = setupGoogleMap;
                 const script = document.createElement('script');
-                // Load Maps API with required 'marker' and 'geometry' libraries
                 script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=setupGoogleMap&libraries=marker,geometry&v=beta`;
+                script.async = true; // Use async for best performance practices
                 script.defer = true;
                 document.head.appendChild(script);
             }
