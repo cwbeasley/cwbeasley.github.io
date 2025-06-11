@@ -73,7 +73,8 @@
         let lastGeocodeTime = 0;
         const geocodeInterval = 1500; // milliseconds
 
-        const specificFormat = "${data.address ? data.address.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.place ? data.place.text : ''}";
+        // UPDATED format to prioritize Point of Interest (POI)
+        const specificFormat = "${data.poi ? data.poi.text + ', ' : ''}${data.address ? data.address.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.place ? data.place.text : ''}";
 
         function wrappedEval(textExpression, contextData) {
           let fn = Function(
@@ -87,49 +88,51 @@
           startLocationListener();
         }
         
+        // UPDATED to parse Point of Interest (POI)
         function parseGoogleAddress(results) {
             const context = {};
             if (!results || results.length === 0) return context;
             const getComponent = (type) => results[0].address_components.find(comp => comp.types.includes(type));
+            
+            const poi = getComponent('point_of_interest');
             const place = getComponent('locality');
             const locality = getComponent('sublocality_level_1') || getComponent('sublocality');
             const neighborhood = getComponent('neighborhood');
             const streetNumber = getComponent('street_number');
             const route = getComponent('route');
             let address = null;
-            if (streetNumber && route) {
+
+            // Don't use the full formatted address if we found a POI, to avoid duplication
+            if (poi) {
+                 address = { text: `${getComponent('street_number')?.long_name || ''} ${getComponent('route')?.long_name || ''}`.trim() };
+            } else if (streetNumber && route) {
                 address = { text: `${streetNumber.long_name} ${route.long_name}` };
             } else if (results[0].formatted_address) {
                 address = { text: results[0].formatted_address.split(',')[0] };
             }
+
+            if (poi) context.poi = { text: poi.long_name };
             if (place) context.place = { text: place.long_name };
             if (locality) context.locality = { text: locality.long_name };
             if (neighborhood) context.neighborhood = { text: neighborhood.long_name };
-            if (address) context.address = address;
+            if (address && address.text) context.address = address; // Only add if it has content
+            
             return context;
         }
         
-        // This function sets up the scrolling marquee animation if needed
         function setupMarqueeAnimation() {
             const container = document.getElementById('text-container');
             const content = document.getElementById('text-content');
-
-            // Check if text is overflowing its container
             const isOverflowing = content.scrollWidth > container.clientWidth;
 
             if (isOverflowing) {
-                // Calculate the distance the text needs to scroll
                 const scrollDistance = content.scrollWidth - container.clientWidth;
-                // Calculate duration based on distance to maintain a consistent speed
                 const scrollSpeed = 60; // pixels per second
                 const duration = content.scrollWidth / scrollSpeed;
-
-                // Set CSS custom properties to be used by the animation
                 container.style.setProperty('--scroll-end-position', `translateX(-${scrollDistance}px)`);
                 container.style.setProperty('--scroll-duration', `${duration}s`);
                 container.classList.add('is-scrolling');
             } else {
-                // If not overflowing, ensure no scrolling class is present
                 container.classList.remove('is-scrolling');
             }
         }
@@ -159,7 +162,6 @@
                   } else {
                     textContentElement.innerText = "Location not found...";
                   }
-                  // Let the browser update the text, then check if it needs to scroll
                   setTimeout(setupMarqueeAnimation, 100);
                 })
                 .catch((error) => {
