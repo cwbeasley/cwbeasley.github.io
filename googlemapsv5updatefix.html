@@ -69,6 +69,7 @@
             let previousEmaLng = null;
             let activePositionTween = null;
             let activeBearingTween = null;
+            let frameCounter = 0;
 
             // --- Main Initialization Function ---
             function setupGoogleMap() {
@@ -79,14 +80,11 @@
                 const initialCenter = { lat: 38.6270, lng: -90.1994 }; // St. Louis, MO
                 const initialZoom = params.get("zoom") ? Number(params.get("zoom")) : 17;
                 
-                // Note: The 'styles' property is intentionally omitted.
-                // When a 'mapId' is used, custom styles must be configured in the Google Cloud Console,
-                // as they override any inline 'styles' array provided here.
                 map = new google.maps.Map(document.getElementById("map"), {
                     center: initialCenter,
                     zoom: initialZoom,
                     disableDefaultUI: true,
-                    mapId: mapId, // mapId is required for Advanced Markers
+                    mapId: mapId,
                     tilt: 45,
                     heading: 0
                 });
@@ -113,6 +111,13 @@
 
             // --- Animation & Helper Functions ---
             function animateTweens(time) {
+                // --- DEBUGGING START ---
+                // This log should fire continuously. Let's only log it every 60 frames to avoid flooding the console.
+                frameCounter++;
+                if (frameCounter % 60 === 0) {
+                    console.log("Animation loop is running...");
+                }
+                // --- DEBUGGING END ---
                 TWEEN.update(time);
                 requestAnimationFrame(animateTweens);
             }
@@ -134,10 +139,8 @@
             }
 
             function handleRealtimeIRLLocation(location) {
-                // --- DEBUGGING START ---
                 console.log("RealtimeIRL data received at:", new Date().toLocaleTimeString());
                 console.log("Raw location object:", location);
-                // --- DEBUGGING END ---
 
                 if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
                     console.warn("Invalid or malformed location data received from RealtimeIRL:", location);
@@ -152,9 +155,7 @@
                     return;
                 }
                 
-                // --- DEBUGGING START ---
                 console.log("Smoothed position target:", smoothedPosition);
-                // --- DEBUGGING END ---
 
                 const newTargetLatLng = new google.maps.LatLng(smoothedPosition.lat, smoothedPosition.lng);
 
@@ -170,6 +171,9 @@
                         .to({ progress: 1 }, POSITION_ANIMATION_DURATION_MS)
                         .easing(TWEEN.Easing.Quadratic.Out)
                         .onUpdate(() => {
+                            // --- DEBUGGING START ---
+                            console.log(`Tween onUpdate: Animating marker. Progress: ${animationState.progress.toFixed(2)}`);
+                            // --- DEBUGGING END ---
                             const interpolatedLatLng = google.maps.geometry.spherical.interpolate(startPosForTween, endPosForTween, animationState.progress);
                             if (advancedMarker && interpolatedLatLng) { advancedMarker.position = interpolatedLatLng; }
                             if (map && interpolatedLatLng) { map.moveCamera({ center: interpolatedLatLng }); }
