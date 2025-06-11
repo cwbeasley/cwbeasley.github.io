@@ -7,6 +7,12 @@
     <script src="https://overlays.rtirl.com/indicator.js"></script>  
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
     <style>
+      @keyframes marquee-scroll {
+        0% { transform: translateX(0%); }
+        15% { transform: translateX(0%); } /* Pause at the start */
+        85% { transform: translateX(var(--scroll-end-position)); } /* Scroll to the end */
+        100% { transform: translateX(var(--scroll-end-position)); } /* Pause at the end */
+      }
       body {
         background-color: rgba(0, 0, 0, 0);
         margin: 0;
@@ -15,29 +21,45 @@
         height: 100%;
         overflow: hidden;
       }
-      #text {
+      #text-container {
         color: rgba(223, 251, 38, 1);
-        font-size: 46px;
+        font-size: 46px; 
         font-family: 'Open Sans', sans-serif;
         font-weight: normal;
         font-style: normal;
-        transform: rotate(0deg);
-        background-color: rgba(0, 0, 0, 0);
-        border-color: rgba(223, 251, 38, 1);
-        border-width: 0px;
-        border-style: solid;
         text-align: center;
-        border-radius: 0% 0% 0% 0%;
-        padding: 0px;
+        padding: 0px 10px;
         -webkit-text-stroke-width: 0px;
         -webkit-text-stroke-color: rgba(255, 255, 255, 1);
         text-shadow: 0px 0px 4px rgba(0, 0, 0, 1);
         width: 100%;
+        
+        /* Styles for scrolling behavior */
+        overflow: hidden; /* This is the clipping mask */
+        display: flex;
+        align-items: center;
+        justify-content: center; /* Center text when it's not scrolling */
+        box-sizing: border-box;
+      }
+      #text-content {
+        white-space: nowrap; /* Prevents text from wrapping */
+        display: inline-block; /* Allows transform to work */
+      }
+      .is-scrolling #text-content {
+         /* Apply animation when this class is present */
+        animation-name: marquee-scroll;
+        animation-duration: var(--scroll-duration);
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+        justify-content: flex-start; /* Align to the left when scrolling */
       }
     </style>
   </head>
   <body>
-    <div id="text">Loading location...</div>
+    <!-- The outer div is the container/mask, the inner span holds the text to be scrolled -->
+    <div id="text-container">
+      <span id="text-content">Loading location...</span>
+    </div>
 
     <script>
       (function() {
@@ -51,7 +73,6 @@
         let lastGeocodeTime = 0;
         const geocodeInterval = 1500; // milliseconds
 
-        // The desired output format, same as the original code
         const specificFormat = "${data.address ? data.address.text + ', ' : ''}${data.neighborhood ? data.neighborhood.text + ', ' : ''}${data.locality ? data.locality.text + ', ' : ''}${data.place ? data.place.text : ''}";
 
         function wrappedEval(textExpression, contextData) {
@@ -61,59 +82,61 @@
           return fn.bind(contextData)();
         }
 
-        // This function will be called by the Google Maps script once it's loaded
         function initGeocoder() {
           geocoder = new google.maps.Geocoder();
           startLocationListener();
         }
         
-        // This function parses the Google Geocoder response into the format expected by the original code
         function parseGoogleAddress(results) {
             const context = {};
-            if (!results || results.length === 0) {
-                return context;
-            }
-
-            // A helper to find a specific component type
+            if (!results || results.length === 0) return context;
             const getComponent = (type) => results[0].address_components.find(comp => comp.types.includes(type));
-            
-            // Map Google's component types to the original context keys
-            const country = getComponent('country');
-            const region = getComponent('administrative_area_level_1');
-            const postcode = getComponent('postal_code');
-            const district = getComponent('administrative_area_level_2');
-            const place = getComponent('locality'); // Google's 'locality' is typically the city/town
-            const locality = getComponent('sublocality_level_1') || getComponent('sublocality'); // Google's 'sublocality' can be a district or large neighborhood
+            const place = getComponent('locality');
+            const locality = getComponent('sublocality_level_1') || getComponent('sublocality');
             const neighborhood = getComponent('neighborhood');
-
-            // Construct an address from street number and route if available
             const streetNumber = getComponent('street_number');
             const route = getComponent('route');
             let address = null;
             if (streetNumber && route) {
                 address = { text: `${streetNumber.long_name} ${route.long_name}` };
             } else if (results[0].formatted_address) {
-                // As a fallback for address, use the first part of the formatted address
                 address = { text: results[0].formatted_address.split(',')[0] };
             }
-
-            // Populate the context object
-            if (country) context.country = { text: country.long_name };
-            if (region) context.region = { text: region.long_name };
-            if (postcode) context.postcode = { text: postcode.long_name };
-            if (district) context.district = { text: district.long_name };
             if (place) context.place = { text: place.long_name };
             if (locality) context.locality = { text: locality.long_name };
             if (neighborhood) context.neighborhood = { text: neighborhood.long_name };
             if (address) context.address = address;
-            
             return context;
         }
+        
+        // This function sets up the scrolling marquee animation if needed
+        function setupMarqueeAnimation() {
+            const container = document.getElementById('text-container');
+            const content = document.getElementById('text-content');
 
+            // Check if text is overflowing its container
+            const isOverflowing = content.scrollWidth > container.clientWidth;
+
+            if (isOverflowing) {
+                // Calculate the distance the text needs to scroll
+                const scrollDistance = content.scrollWidth - container.clientWidth;
+                // Calculate duration based on distance to maintain a consistent speed
+                const scrollSpeed = 60; // pixels per second
+                const duration = content.scrollWidth / scrollSpeed;
+
+                // Set CSS custom properties to be used by the animation
+                container.style.setProperty('--scroll-end-position', `translateX(-${scrollDistance}px)`);
+                container.style.setProperty('--scroll-duration', `${duration}s`);
+                container.classList.add('is-scrolling');
+            } else {
+                // If not overflowing, ensure no scrolling class is present
+                container.classList.remove('is-scrolling');
+            }
+        }
 
         function startLocationListener() {
           if (!pullKey) {
-            document.getElementById("text").innerText = "Error: 'key' parameter missing in URL.";
+            document.getElementById("text-content").innerText = "Error: 'key' parameter missing in URL.";
             return;
           }
 
@@ -122,40 +145,33 @@
             
             if (currentTime - lastGeocodeTime > geocodeInterval) {
               lastGeocodeTime = currentTime;
-
-              const latlng = {
-                lat: location.latitude,
-                lng: location.longitude,
-              };
+              const latlng = { lat: location.latitude, lng: location.longitude };
 
               geocoder.geocode({ location: latlng })
                 .then((response) => {
                   const context = parseGoogleAddress(response.results);
-                  
-                  const result = wrappedEval(
-                    "`" + specificFormat + "`",
-                    context
-                  );
-
-                  // Clean up and display the result
+                  const result = wrappedEval("`" + specificFormat + "`", context);
                   const cleanedResult = result.replace(/,\s*$/, "").replace(/,\s*,/g, ',').replace(/^,\s*/, '');
+                  const textContentElement = document.getElementById("text-content");
+
                   if (cleanedResult && cleanedResult.trim() !== '') {
-                    document.getElementById("text").innerText = cleanedResult;
+                    textContentElement.innerText = cleanedResult;
                   } else {
-                    document.getElementById("text").innerText = "Location not found...";
+                    textContentElement.innerText = "Location not found...";
                   }
+                  // Let the browser update the text, then check if it needs to scroll
+                  setTimeout(setupMarqueeAnimation, 100);
                 })
                 .catch((error) => {
                   console.error("Google Geocoding error:", error);
-                  document.getElementById("text").innerText = "Error finding location.";
+                  document.getElementById("text-content").innerText = "Error finding location.";
                 });
             }
           });
         }
 
-        // --- API Loading and Initialization ---
         if (!apiKey) {
-          document.getElementById("text").innerText = "Error: 'api_key' parameter missing in URL.";
+          document.getElementById("text-content").innerText = "Error: 'api_key' parameter missing in URL.";
         } else {
           window.initGeocoder = initGeocoder;
           const script = document.createElement('script');
