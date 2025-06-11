@@ -72,27 +72,21 @@
 
             // --- Main Initialization Function ---
             function setupGoogleMap() {
-                const mapId = params.get("map_id") || "DEMO_MAP_ID"; 
+                // Using the hardcoded Map ID provided by the user.
+                const mapId = "5a45ae59a3d1e20f1361b7ce"; 
                 Angles.SCALE = 360;
 
                 const initialCenter = { lat: 38.6270, lng: -90.1994 }; // St. Louis, MO
                 const initialZoom = params.get("zoom") ? Number(params.get("zoom")) : 17;
-                const mapStylesParam = params.get("style");
-                let mapStyles = [];
-                if (mapStylesParam) {
-                    try {
-                        mapStyles = JSON.parse(atob(decodeURIComponent(mapStylesParam)));
-                    } catch (e) {
-                        console.error("Error parsing map styles:", e);
-                    }
-                }
-
+                
+                // Note: The 'styles' property is intentionally omitted.
+                // When a 'mapId' is used, custom styles must be configured in the Google Cloud Console,
+                // as they override any inline 'styles' array provided here.
                 map = new google.maps.Map(document.getElementById("map"), {
                     center: initialCenter,
                     zoom: initialZoom,
                     disableDefaultUI: true,
-                    styles: mapStyles,
-                    mapId: mapId,
+                    mapId: mapId, // mapId is required for Advanced Markers
                     tilt: 45,
                     heading: 0
                 });
