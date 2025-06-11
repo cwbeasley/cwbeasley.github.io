@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Smooth Map Navigation Overlay v5</title>
+    <!-- 
+      IMPORTANT: Save this file with a new name, like "googlemapsv6.html",
+      to ensure the browser does not use a cached, older version.
+    -->
+    <title>Smooth Map Navigation Overlay v6</title>
     <script src="tween.umd.js"></script>
     <script src="angles.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
@@ -139,21 +143,22 @@
                 if (currentAnimatedCoords) {
                     if (activePositionTween) { activePositionTween.stop(); }
 
-                    // Directly tween the coordinate object for robustness
+                    // Directly tween the coordinate object for robustness.
                     activePositionTween = new TWEEN.Tween(currentAnimatedCoords)
                         .to(smoothedPosition, POSITION_ANIMATION_DURATION_MS)
                         .easing(TWEEN.Easing.Quadratic.Out)
                         .onUpdate(() => {
-                            const tweenedLatLng = new google.maps.LatLng(currentAnimatedCoords.lat, currentAnimatedCoords.lng);
-                            if (advancedMarker) { advancedMarker.position = tweenedLatLng; }
-                            if (map) { map.moveCamera({ center: tweenedLatLng }); }
+                            // The currentAnimatedCoords object is being modified by the tween directly.
+                            // Pass this plain object (a LatLngLiteral) to the map methods.
+                            if (advancedMarker) { advancedMarker.position = currentAnimatedCoords; }
+                            if (map) { map.moveCamera({ center: currentAnimatedCoords }); }
                         })
                         .onComplete(() => {
                             activePositionTween = null;
                         })
                         .start();
                 } else { 
-                    const firstPos = new google.maps.LatLng(smoothedPosition.lat, smoothedPosition.lng);
+                    const firstPos = { lat: smoothedPosition.lat, lng: smoothedPosition.lng };
                     if (advancedMarker) { advancedMarker.position = firstPos; }
                     if (map) { map.setCenter(firstPos); }
                     currentAnimatedCoords = { lat: smoothedPosition.lat, lng: smoothedPosition.lng };
