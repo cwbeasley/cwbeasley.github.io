@@ -63,7 +63,8 @@
         let activeBearingTween = null;
 
         // --- Initialization ---
-        function initMap() {
+        // Renamed function to setupGoogleMap to ensure uniqueness
+        function setupGoogleMap() {
             // The 'params' constant is already declared globally, so we use it directly.
             const mapId = params.get("map_id") || "DEMO_MAP_ID"; 
             Angles.SCALE = 360;
@@ -241,10 +242,12 @@
             const wrapper = document.querySelector('.map-circle-wrapper');
             if (wrapper) wrapper.style.borderColor = 'red';
         } else {
-            window.initMap = initMap;
+            // Make the renamed function available globally for the callback
+            window.setupGoogleMap = setupGoogleMap;
 
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap&libraries=marker,geometry&v=beta`;
+            // Update the callback in the URL to use the new function name
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=setupGoogleMap&libraries=marker,geometry&v=beta`;
             script.defer = true;
             document.head.appendChild(script);
         }
