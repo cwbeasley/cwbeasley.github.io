@@ -1,135 +1,200 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Working Map with Map ID</title>
-    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
+<head>
+    <title>Working Map with Smooth Animations</title>
+    <!-- Animation Libraries -->
+    <script src="tween.umd.js"></script>
+    <script src="angles.min.js"></script>
+    <!-- RealtimeIRL Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@rtirl/api@latest/lib/index.min.js"></script>
     <script src="https://overlays.rtirl.com/indicator.js"></script>
-    <link
-      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
-      rel="stylesheet"
-    />
 
     <style>
-      /* Ensure the html and body elements take up the full available space */
       html, body {
           margin: 0 !important;
           padding: 0 !important;
           width: 100% !important;
           height: 100% !important;
-          overflow: hidden !important; /* Hide scrollbars for the whole window */
-          background-color: rgba(0, 0, 0, 0) !important; /* Makes the background transparent */
+          overflow: hidden !important;
+          background-color: rgba(0, 0, 0, 0) !important;
       }
 
-      /* This div is the container that will be styled into a circle */
       .map-circle-wrapper {
-          /* Define the size of your circular map display */
-          width: 350px !important; /* Adjust this value for your desired circle size */
-          height: 350px !important; /* This MUST be equal to the width for a perfect circle */
-
-          /* --- THE MAGIC FOR THE CIRCLE --- */
-          border-radius: 50% !important; /* Makes this square div a perfect circle */
-          overflow: hidden !important; /* **CRUCIAL:** Clips the map content to the circle */
-
-          /* Optional: Styling for the circular frame itself */
-          border: 6px solid #4285F4 !important; /* A noticeable Google-blue border */
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important; /* Adds a shadow for depth */
-          background-color: rgba(255, 255, 255, 0.05) !important; /* Very subtle transparent white background */
+          width: 350px !important;
+          height: 350px !important;
+          border-radius: 50% !important;
+          overflow: hidden !important;
+          border: 6px solid #4285F4 !important;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+          background-color: rgba(255, 255, 255, 0.05) !important;
       }
 
-      /* Ensure the original #wrapper inside the circle fills its new parent */
-      #wrapper {
-          width: 100% !important;
-          height: 100% !important;
-          position: relative !important; /* Maintain original positioning for map/marker */
-      }
-
-      /* Ensure the map div (#map) fills its parent completely */
       #map {
           width: 100% !important;
           height: 100% !important;
-          position: relative !important;
       }
-
-      /* Style and position the map marker */
-      #marker {
-          background-color: cyan !important;
-          height: 12px !important;
-          width: 12px !important;
-          position: absolute !important;
-          border-radius: 50% !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-6px, -6px) !important; /* Re-center the marker precisely */
-          box-shadow: 0 0 10px cyan !important;
-          z-index: 10 !important; /* Ensure marker is always visible on top of the map */
-      }
-
-      /* Optional: Hide Google Maps and Mapbox default UI elements/attributions */
+      
       .gm-style-cc, .gmnoprint {
           display: none !important;
       }
-      .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right {
-          display: none !important;
-      }
     </style>
-    </head>
-  <body>
+</head>
+<body>
     <div class="map-circle-wrapper">
-      <div id="wrapper" style="position: relative; width: 100%; height: 100%;">
-        <div id="map" style="width: 100%; height: 100%"></div>
-        <div
-          id="marker"
-          style="
-            background-color: cyan;
-            height: 12px;
-            width: 12px;
-            position: absolute; /* This marker needs absolute positioning relative to #wrapper */
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-6px, -6px);
-            box-shadow: 0 0 10px cyan;
-          "
-        ></div>
-      </div>
+        <div id="map"></div>
     </div>
 
     <script>
-      var params = new URLSearchParams(window.location.search);
-      if(params.get("fullscreen")) {
-        document.documentElement.setAttribute('style', 'margin: 0; padding: 0; width: 100%; height: 100%;');
-        document.body.setAttribute('style', 'margin: 0; padding: 0; width: 100%; height: 100%;');
-        document.getElementById('wrapper').setAttribute('style', 'height: 100%; width: 100%; position: relative;');
-      }
-      var zoom = params.get("zoom");
-      var script = document.createElement("script");
-      script.src =
-        "https://maps.googleapis.com/maps/api/js?key=" +
-        params.get("api_key") +
-        "&callback=initMap";
-      script.async = true;
-      var map;
-      window.initMap = function () {
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: -34.397, lng: 150.644 },
-          zoom: zoom ? Number(zoom) : 13,
-          disableDefaultUI: true,
-          mapId: "5a45ae59a3d1e20f1361b7ce", // ADDED your specific Map ID
-          tilt: 45 // ADDED tilt for 3D perspective
-          // REMOVED the 'styles' property as it conflicts with mapId
-        });
-      };
-      document.head.appendChild(script);
+        (function() {
+            'use strict';
 
-      const pullKey = new URLSearchParams(window.location.search).get("key");
-      RealtimeIRL.forPullKey(pullKey).addLocationListener(function (location) {
-        map.panTo({
-          lng: location.longitude,
-          lat: location.latitude,
-        });
-      });
+            // --- Configuration ---
+            const params = new URLSearchParams(window.location.search);
+            const EMA_ALPHA = 0.3; // Smoothing for location. Lower is smoother but lags more.
+            const POSITION_ANIMATION_DURATION_MS = 1200; // Duration for marker movement.
+            const BEARING_ANIMATION_DURATION_MS = 1500; // Duration for map rotation.
+
+            // --- State Variables ---
+            let map;
+            let advancedMarker;
+            let currentAnimatedCoords = null; 
+            let previousSmoothedPosition = null;
+            let previousEmaLat = null;
+            let previousEmaLng = null;
+            let activePositionTween = null;
+            let activeBearingTween = null;
+
+            // --- Main Initialization ---
+            function setupGoogleMap() {
+                const mapId = "5a45ae59a3d1e20f1361b7ce"; 
+                Angles.SCALE = 360; // Configure angles.js for degrees.
+
+                const initialCenter = { lat: 38.6270, lng: -90.1994 };
+                const initialZoom = params.get("zoom") ? Number(params.get("zoom")) : 17;
+                
+                map = new google.maps.Map(document.getElementById("map"), {
+                    center: initialCenter,
+                    zoom: initialZoom,
+                    disableDefaultUI: true,
+                    mapId: mapId,
+                    tilt: 45,
+                    heading: 0
+                });
+
+                currentAnimatedCoords = { lat: initialCenter.lat, lng: initialCenter.lng };
+                previousSmoothedPosition = { lat: initialCenter.lat, lng: initialCenter.lng };
+
+                // Use the modern AdvancedMarkerElement
+                advancedMarker = new google.maps.marker.AdvancedMarkerElement({
+                    map: map,
+                    position: initialCenter,
+                });
+
+                // Start the master animation loop
+                requestAnimationFrame(animateTweens);
+
+                // Start listening for RealtimeIRL location data
+                const pullKey = params.get("key");
+                if (pullKey) {
+                    RealtimeIRL.forPullKey(pullKey).addLocationListener(handleRealtimeIRLLocation);
+                } else {
+                    console.warn("RealtimeIRL pull key is missing.");
+                    document.getElementById("map").innerHTML = "<p style='color:orange; text-align:center; padding: 20px;'>RealtimeIRL 'key' missing.</p>";
+                }
+            }
+
+            // --- Core Logic ---
+            function animateTweens(time) {
+                TWEEN.update(time);
+                requestAnimationFrame(animateTweens);
+            }
+
+            function getSmoothedLocation(rawLat, rawLng) {
+                if (previousEmaLat === null) {
+                    previousEmaLat = rawLat;
+                    previousEmaLng = rawLng;
+                } else {
+                    previousEmaLat = EMA_ALPHA * rawLat + (1 - EMA_ALPHA) * previousEmaLat;
+                    previousEmaLng = EMA_ALPHA * rawLng + (1 - EMA_ALPHA) * previousEmaLng;
+                }
+                return { lat: previousEmaLat, lng: previousEmaLng };
+            }
+
+            function handleRealtimeIRLLocation(location) {
+                if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') return;
+
+                const smoothedPosition = getSmoothedLocation(location.latitude, location.longitude);
+                if (!smoothedPosition) return;
+
+                animatePosition(smoothedPosition);
+                animateBearing(smoothedPosition);
+                
+                previousSmoothedPosition = smoothedPosition;
+            }
+
+            // --- Animation Functions ---
+            function animatePosition(targetPosition) {
+                if (activePositionTween) activePositionTween.stop();
+
+                const startCoords = { ...currentAnimatedCoords };
+
+                activePositionTween = new TWEEN.Tween(startCoords)
+                    .to(targetPosition, POSITION_ANIMATION_DURATION_MS)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(() => {
+                        const newPosition = new google.maps.LatLng(startCoords.lat, startCoords.lng);
+                        if (advancedMarker) advancedMarker.position = newPosition;
+                        if (map) map.moveCamera({ center: newPosition });
+                        currentAnimatedCoords = { lat: startCoords.lat, lng: startCoords.lng };
+                    })
+                    .onComplete(() => { activePositionTween = null; })
+                    .start();
+            }
+
+            function animateBearing(targetPosition) {
+                if (!map || !previousSmoothedPosition || (previousSmoothedPosition.lat === targetPosition.lat && previousSmoothedPosition.lng === targetPosition.lng)) {
+                    return;
+                }
+
+                const prevLatLng = new google.maps.LatLng(previousSmoothedPosition.lat, previousSmoothedPosition.lng);
+                const targetLatLng = new google.maps.LatLng(targetPosition.lat, targetPosition.lng);
+                const targetBearing = google.maps.geometry.spherical.computeHeading(prevLatLng, targetLatLng);
+                
+                const startBearing = map.getHeading() || 0;
+                const endBearing = Angles.normalize(targetBearing);
+
+                if (Math.abs(Angles.diff(startBearing, endBearing)) < 1) return;
+
+                if (activeBearingTween) activeBearingTween.stop();
+                
+                const direction = Angles.shortestDirection(startBearing, endBearing);
+                const bearingAnimationState = { progress: 0 };
+
+                activeBearingTween = new TWEEN.Tween(bearingAnimationState)
+                    .to({ progress: 1 }, BEARING_ANIMATION_DURATION_MS)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(() => {
+                        const interpolatedBearing = Angles.lerp(startBearing, endBearing, bearingAnimationState.progress, direction);
+                        map.moveCamera({ heading: interpolatedBearing });
+                    })
+                    .onComplete(() => { activeBearingTween = null; })
+                    .start();
+            }
+
+            // --- API Loading ---
+            const apiKey = params.get("api_key");
+            if (!apiKey) {
+                console.error("Google Maps API key is missing.");
+                document.getElementById("map").innerHTML = "<p style='color:red; text-align:center; padding: 20px;'>Google Maps 'api_key' missing.</p>";
+            } else {
+                window.setupGoogleMap = setupGoogleMap;
+                const script = document.createElement('script');
+                // Load Maps API with required 'marker' and 'geometry' libraries
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=setupGoogleMap&libraries=marker,geometry&v=beta`;
+                script.defer = true;
+                document.head.appendChild(script);
+            }
+        })();
     </script>
-  </body>
+</body>
 </html>
