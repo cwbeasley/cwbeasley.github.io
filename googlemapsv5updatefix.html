@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <!-- 
-      IMPORTANT: Save this file with a new name, like "googlemapsv5.html",
-      to ensure the browser does not use a cached, older version.
-    -->
     <title>Smooth Map Navigation Overlay v5</title>
     <script src="tween.umd.js"></script>
     <script src="angles.min.js"></script>
@@ -63,21 +59,20 @@
             
             let map;
             let advancedMarker;
-            let currentAnimatedPosition = null;
+            // This will store the current state as a plain object for easier tweening
+            let currentAnimatedCoords = null; 
             let previousSmoothedPosition = null;
             let previousEmaLat = null;
             let previousEmaLng = null;
             let activePositionTween = null;
             let activeBearingTween = null;
-            let frameCounter = 0;
 
             // --- Main Initialization Function ---
             function setupGoogleMap() {
-                // Using the hardcoded Map ID provided by the user.
                 const mapId = "5a45ae59a3d1e20f1361b7ce"; 
                 Angles.SCALE = 360;
 
-                const initialCenter = { lat: 38.6270, lng: -90.1994 }; // St. Louis, MO
+                const initialCenter = { lat: 38.6270, lng: -90.1994 };
                 const initialZoom = params.get("zoom") ? Number(params.get("zoom")) : 17;
                 
                 map = new google.maps.Map(document.getElementById("map"), {
@@ -89,8 +84,9 @@
                     heading: 0
                 });
 
-                currentAnimatedPosition = map.getCenter();
-                previousSmoothedPosition = { lat: currentAnimatedPosition.lat(), lng: currentAnimatedPosition.lng() };
+                // Initialize the animated coordinates as a plain object
+                currentAnimatedCoords = { lat: initialCenter.lat, lng: initialCenter.lng };
+                previousSmoothedPosition = { lat: initialCenter.lat, lng: initialCenter.lng };
 
                 advancedMarker = new google.maps.marker.AdvancedMarkerElement({
                     map: map,
@@ -111,21 +107,13 @@
 
             // --- Animation & Helper Functions ---
             function animateTweens(time) {
-                // --- DEBUGGING START ---
-                // This log should fire continuously. Let's only log it every 60 frames to avoid flooding the console.
-                frameCounter++;
-                if (frameCounter % 60 === 0) {
-                    console.log("Animation loop is running...");
-                }
-                // --- DEBUGGING END ---
                 TWEEN.update(time);
                 requestAnimationFrame(animateTweens);
             }
 
             function getSmoothedLocation(rawLat, rawLng) {
                 if (typeof rawLat !== 'number' || typeof rawLng !== 'number') {
-                    console.warn("Invalid raw coordinates for smoothing:", rawLat, rawLng);
-                    return (previousEmaLat !== null && previousEmaLng !== null) ? { lat: previousEmaLat, lng: previousEmaLng } : null;
+                    return null;
                 }
 
                 if (previousEmaLat === null || previousEmaLng === null) {
@@ -139,69 +127,49 @@
             }
 
             function handleRealtimeIRLLocation(location) {
-                console.log("RealtimeIRL data received at:", new Date().toLocaleTimeString());
-                console.log("Raw location object:", location);
-
                 if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
-                    console.warn("Invalid or malformed location data received from RealtimeIRL:", location);
+                    console.warn("Invalid location data received:", location);
                     return;
                 }
 
-                const rawPosition = { lat: location.latitude, lng: location.longitude };
-                const smoothedPosition = getSmoothedLocation(rawPosition.lat, rawPosition.lng);
-
-                if (!smoothedPosition || typeof smoothedPosition.lat !== 'number' || typeof smoothedPosition.lng !== 'number') {
-                    console.warn("Invalid smoothed position:", smoothedPosition);
-                    return;
-                }
-                
-                console.log("Smoothed position target:", smoothedPosition);
-
-                const newTargetLatLng = new google.maps.LatLng(smoothedPosition.lat, smoothedPosition.lng);
+                const smoothedPosition = getSmoothedLocation(location.latitude, location.longitude);
+                if (!smoothedPosition) return;
 
                 // Animate Marker Position
-                if (currentAnimatedPosition && newTargetLatLng) {
-                    const startPosForTween = currentAnimatedPosition;
-                    const endPosForTween = newTargetLatLng;
-
+                if (currentAnimatedCoords) {
                     if (activePositionTween) { activePositionTween.stop(); }
 
-                    const animationState = { progress: 0 };
-                    activePositionTween = new TWEEN.Tween(animationState)
-                        .to({ progress: 1 }, POSITION_ANIMATION_DURATION_MS)
+                    // Directly tween the coordinate object for robustness
+                    activePositionTween = new TWEEN.Tween(currentAnimatedCoords)
+                        .to(smoothedPosition, POSITION_ANIMATION_DURATION_MS)
                         .easing(TWEEN.Easing.Quadratic.Out)
                         .onUpdate(() => {
-                            // --- DEBUGGING START ---
-                            console.log(`Tween onUpdate: Animating marker. Progress: ${animationState.progress.toFixed(2)}`);
-                            // --- DEBUGGING END ---
-                            const interpolatedLatLng = google.maps.geometry.spherical.interpolate(startPosForTween, endPosForTween, animationState.progress);
-                            if (advancedMarker && interpolatedLatLng) { advancedMarker.position = interpolatedLatLng; }
-                            if (map && interpolatedLatLng) { map.moveCamera({ center: interpolatedLatLng }); }
-                            currentAnimatedPosition = interpolatedLatLng;
+                            const tweenedLatLng = new google.maps.LatLng(currentAnimatedCoords.lat, currentAnimatedCoords.lng);
+                            if (advancedMarker) { advancedMarker.position = tweenedLatLng; }
+                            if (map) { map.moveCamera({ center: tweenedLatLng }); }
                         })
                         .onComplete(() => {
-                            currentAnimatedPosition = endPosForTween;
-                            if (advancedMarker) { advancedMarker.position = endPosForTween; }
-                            if (map) { map.moveCamera({ center: endPosForTween }); }
                             activePositionTween = null;
                         })
                         .start();
                 } else { 
-                    if (advancedMarker) { advancedMarker.position = newTargetLatLng; }
-                    if (map) { map.setCenter(newTargetLatLng); }
-                    currentAnimatedPosition = newTargetLatLng;
+                    const firstPos = new google.maps.LatLng(smoothedPosition.lat, smoothedPosition.lng);
+                    if (advancedMarker) { advancedMarker.position = firstPos; }
+                    if (map) { map.setCenter(firstPos); }
+                    currentAnimatedCoords = { lat: smoothedPosition.lat, lng: smoothedPosition.lng };
                 }
 
                 // Animate Map Bearing/Heading
                 if (map && previousSmoothedPosition && (previousSmoothedPosition.lat !== smoothedPosition.lat || previousSmoothedPosition.lng !== smoothedPosition.lng)) {
                     const prevLatLngForHeading = new google.maps.LatLng(previousSmoothedPosition.lat, previousSmoothedPosition.lng);
+                    const newTargetLatLng = new google.maps.LatLng(smoothedPosition.lat, smoothedPosition.lng);
                     let targetBearing = google.maps.geometry.spherical.computeHeading(prevLatLngForHeading, newTargetLatLng);
-                    const currentMapBearing = map.getHeading() || 0;
-                    const startBearingNormalized = Angles.normalize(currentMapBearing);
-                    const targetBearingNormalized = Angles.normalize(targetBearing);
+                    
+                    const startBearing = map.getHeading() || 0;
+                    const endBearing = Angles.normalize(targetBearing);
 
-                    if (Math.abs(Angles.diff(startBearingNormalized, targetBearingNormalized)) > 1) {
-                        const direction = Angles.shortestDirection(startBearingNormalized, targetBearingNormalized);
+                    if (Math.abs(Angles.diff(startBearing, endBearing)) > 1) {
+                        const direction = Angles.shortestDirection(startBearing, endBearing);
                         if (activeBearingTween) { activeBearingTween.stop(); }
 
                         const bearingState = { progress: 0 };
@@ -209,11 +177,11 @@
                             .to({ progress: 1 }, BEARING_ANIMATION_DURATION_MS)
                             .easing(TWEEN.Easing.Quadratic.Out)
                             .onUpdate(() => {
-                                const interpolatedBearing = Angles.lerp(startBearingNormalized, targetBearingNormalized, bearingState.progress, direction);
+                                const interpolatedBearing = Angles.lerp(startBearing, endBearing, bearingState.progress, direction);
                                 map.moveCamera({ heading: interpolatedBearing });
                             })
                             .onComplete(() => {
-                                map.moveCamera({ heading: targetBearingNormalized });
+                                map.moveCamera({ heading: endBearing });
                                 activeBearingTween = null;
                             })
                             .start();
@@ -232,7 +200,6 @@
                 const wrapper = document.querySelector('.map-circle-wrapper');
                 if (wrapper) wrapper.style.borderColor = 'red';
             } else {
-                // Expose the setup function globally for the Maps API callback
                 window.setupGoogleMap = setupGoogleMap;
                 
                 const script = document.createElement('script');
